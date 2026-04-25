@@ -31,7 +31,9 @@ export async function POST(req) {
     }
   }
 
-  // shape that matches the `patients` Supabase table
+  // shape that matches the `patients` Supabase table.
+  // queue_position is NOT stored — it's derived at read time in /api/queue
+  // because the order depends on every other row's status/esi_score.
   const patient = {
     name: normalized.name,
     language: normalized.language,
@@ -43,26 +45,12 @@ export async function POST(req) {
     red_flags: scoring.red_flags,
     clinical_rationale: scoring.clinical_rationale,
     status: "waiting",
-    // id, arrival_time, queue_position will be set on insert
+    // id, arrival_time set on insert by Postgres defaults
   };
-
-  const { count, error: countError } = await supabase
-    .from("patients")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "waiting")
-    .lte("esi_score", patient.esi_score);
-
-  if (countError) {
-    console.error("supabase count error:", countError);
-    return jsonError(countError.message, 500);
-  }
 
   const { data: insertedPatient, error: insertError } = await supabase
     .from("patients")
-    .insert({
-      ...patient,
-      queue_position: (count ?? 0) + 1,
-    })
+    .insert(patient)
     .select()
     .single();
 
