@@ -1,22 +1,13 @@
-import { NextResponse } from "next/server";
 import { validateIntake } from "@/lib/validate.js";
 import { triage } from "@/lib/triage.js";
+import { jsonError, jsonOk, methodNotAllowed, readJsonBody } from "@/lib/http.js";
 
 export async function POST(req) {
-  let body;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json(
-      { ok: false, errors: ["invalid JSON body"] },
-      { status: 400 },
-    );
-  }
+  const parsed = await readJsonBody(req);
+  if (!parsed.ok) return jsonError(parsed.error, 400);
 
-  const { ok, errors, normalized } = validateIntake(body);
-  if (!ok) {
-    return NextResponse.json({ ok: false, errors }, { status: 400 });
-  }
+  const { ok, errors, normalized } = validateIntake(parsed.body);
+  if (!ok) return jsonError(errors, 400);
 
   const triageResult = triage(normalized);
 
@@ -34,10 +25,18 @@ export async function POST(req) {
     // id, arrival_time, queue_position will be set on insert
   };
 
-  // TODO: insert `patient` into Supabase, set queue_position, return inserted row
+  // TODO(db-team): insert `patient` into the `patients` table.
+  //   - let Postgres set id / arrival_time via column defaults
+  //   - compute queue_position (e.g. count of waiting rows with esi_score <= patient.esi_score)
+  //   - .select().single() the inserted row and replace `patient` below with it
+  //   - on insert error, return jsonError(error.message, 500)
 
-  return NextResponse.json(
-    { ok: true, patient, wait_category: triageResult.wait_category },
-    { status: 201 },
+  return jsonOk(
+    { patient, wait_category: triageResult.wait_category },
+    201,
   );
+}
+
+export async function GET() {
+  return methodNotAllowed(["POST"]);
 }

@@ -1,8 +1,5 @@
-import { NextResponse } from "next/server";
+import { jsonOk } from "@/lib/http.js";
 
 export async function GET() {
-  return NextResponse.json({
-    status: "ok",
-    service: "waitwise-api",
-  });
+  return jsonOk({ status: "ok", service: "waitwise-api" });
 }
