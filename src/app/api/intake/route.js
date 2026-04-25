@@ -1,35 +1,43 @@
-// src/app/api/intake/route.js
 import { NextResponse } from "next/server";
+import { validateIntake } from "@/lib/validate.js";
+import { triage } from "@/lib/triage.js";
 
 export async function POST(req) {
+  let body;
   try {
-    const body = await req.json();
-
-    // 1. Safety check (simple keyword)
-    const danger = ["chest pain", "can't breathe", "stroke"];
-    if (danger.some((d) => body.chiefComplaint?.toLowerCase().includes(d))) {
-      return NextResponse.json({
-        esi_alert: true,
-        message: "Seek immediate help",
-      });
-    }
-
-    // 2. Fake AI (replace later)
-    const esi_score = Math.random() > 0.5 ? 2 : 4;
-
-    const result = {
-      id: crypto.randomUUID(),
-      chief_complaint: body.chiefComplaint,
-      esi_score,
-      wait_category: esi_score <= 2 ? "priority" : "standard",
-      red_flags: esi_score <= 2 ? ["high risk symptoms"] : [],
-      created_at: new Date().toISOString(),
-    };
-
-    // 3. TODO: insert into Supabase here
-
-    return NextResponse.json(result);
-  } catch (err) {
-    return NextResponse.json({ error: "fail" }, { status: 500 });
+    body = await req.json();
+  } catch {
+    return NextResponse.json(
+      { ok: false, errors: ["invalid JSON body"] },
+      { status: 400 },
+    );
   }
+
+  const { ok, errors, normalized } = validateIntake(body);
+  if (!ok) {
+    return NextResponse.json({ ok: false, errors }, { status: 400 });
+  }
+
+  const triageResult = triage(normalized);
+
+  // shape that matches the `patients` Supabase table
+  const patient = {
+    name: normalized.name,
+    language: normalized.language,
+    chief_complaint: normalized.chief_complaint,
+    symptoms: normalized.symptoms,
+    pain_level: normalized.pain_level,
+    esi_score: triageResult.esi_score,
+    red_flags: triageResult.red_flags,
+    clinical_rationale: triageResult.clinical_rationale,
+    status: "waiting",
+    // id, arrival_time, queue_position will be set on insert
+  };
+
+  // TODO: insert `patient` into Supabase, set queue_position, return inserted row
+
+  return NextResponse.json(
+    { ok: true, patient, wait_category: triageResult.wait_category },
+    { status: 201 },
+  );
 }

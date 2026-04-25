@@ -12,16 +12,19 @@ function toNumberOrNull(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-//converts symptoms/history/etc to arrays ("example, dizzynes" -> ["example", "dizzyness"])
-function toArray(value) {
-  if (Array.isArray(value)) return value.map(trimString).filter(Boolean);
+//normalizes a list-like input to a clean comma-separated string ("a, b ,c" -> "a, b, c")
+function toCsvString(value) {
+  if (Array.isArray(value)) {
+    return value.map(trimString).filter(Boolean).join(", ");
+  }
   if (typeof value === "string") {
     return value
       .split(",")
       .map((s) => s.trim())
-      .filter(Boolean);
+      .filter(Boolean)
+      .join(", ");
   }
-  return [];
+  return "";
 }
 
 //keeps pain level between min and max
@@ -45,13 +48,7 @@ export function validateIntake(payload) {
     }
   }
 
-  const age = toNumberOrNull(payload.age);
-  if (payload.age !== undefined && age === null) errors.push("age must be a number");
-  if (age !== null && (age < 0 || age > 130)) errors.push("age must be between 0 and 130");
-
   const painLevel = clamp(toNumberOrNull(payload.painLevel), 0, 10);
-  const heartRate = toNumberOrNull(payload.heartRate);
-  const oxygenLevel = toNumberOrNull(payload.oxygenLevel);
 
   if (errors.length > 0) {
     return { ok: false, errors, normalized: null };
@@ -59,15 +56,10 @@ export function validateIntake(payload) {
 
   const normalized = {
     name: trimString(payload.name),
-    age,
+    language: trimString(payload.language) || "en",
     chief_complaint: trimString(payload.chiefComplaint),
+    symptoms: toCsvString(payload.symptoms),
     pain_level: painLevel,
-    symptoms: toArray(payload.symptoms),
-    medical_history: toArray(payload.medicalHistory),
-    medications: toArray(payload.medications),
-    allergies: toArray(payload.allergies),
-    heart_rate: heartRate,
-    oxygen_level: oxygenLevel,
   };
 
   return { ok: true, errors: [], normalized };
