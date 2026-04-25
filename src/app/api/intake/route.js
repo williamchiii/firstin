@@ -20,15 +20,24 @@ export async function POST(req) {
 
   const triageResult = triage(normalized);
 
+  // shape that matches the `patients` Supabase table
   const patient = {
-    id: crypto.randomUUID(),
-    ...normalized,
-    ...triageResult,
+    name: normalized.name,
+    language: normalized.language,
+    chief_complaint: normalized.chief_complaint,
+    symptoms: normalized.symptoms,
+    pain_level: normalized.pain_level,
+    esi_score: triageResult.esi_score,
+    red_flags: triageResult.red_flags,
+    clinical_rationale: triageResult.clinical_rationale,
     status: "waiting",
-    created_at: new Date().toISOString(),
+    // id, arrival_time, queue_position will be set on insert
   };
 
-  // TODO: insert `patient` into Supabase here
+  // TODO: insert `patient` into Supabase, set queue_position, return inserted row
 
-  return NextResponse.json({ ok: true, patient }, { status: 201 });
+  return NextResponse.json(
+    { ok: true, patient, wait_category: triageResult.wait_category },
+    { status: 201 },
+  );
 }

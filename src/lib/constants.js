@@ -32,11 +32,6 @@ export const ESI_2_KEYWORDS = [
   "pregnant bleeding",
 ];
 
-export const VITALS_THRESHOLDS = {
-  heartRate: { criticalLow: 40, criticalHigh: 130, concernLow: 50, concernHigh: 110 },
-  oxygenLevel: { critical: 90, concern: 94 },
-};
-
 export const ESI_TO_WAIT_CATEGORY = {
   1: "immediate",
   2: "priority",
@@ -45,4 +40,4 @@ export const ESI_TO_WAIT_CATEGORY = {
   5: "non_urgent",
 };
 
-export const REQUIRED_INTAKE_FIELDS = ["name", "age", "chiefComplaint"];
+export const REQUIRED_INTAKE_FIELDS = ["name", "chiefComplaint"];

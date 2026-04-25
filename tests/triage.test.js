@@ -10,100 +10,77 @@ function process(payload) {
 
 describe("validateIntake", () => {
   test("rejects missing required fields", () => {
-    const { ok, errors } = validateIntake({ age: 40 });
+    const { ok, errors } = validateIntake({});
     expect(ok).toBe(false);
     expect(errors).toContain("name is required");
     expect(errors).toContain("chiefComplaint is required");
   });
 
-  test("rejects non-numeric age", () => {
-    const { ok, errors } = validateIntake({
-      name: "X",
-      age: "not a number",
-      chiefComplaint: "headache",
-    });
-    expect(ok).toBe(false);
-    expect(errors.some((e) => e.includes("age"))).toBe(true);
-  });
-
-  test("normalizes comma-separated symptoms into array", () => {
+  test("normalizes comma-separated symptoms into csv string", () => {
     const { ok, normalized } = validateIntake({
       name: "X",
-      age: 30,
       chiefComplaint: "headache",
       symptoms: "nausea, dizziness, blurry vision",
     });
     expect(ok).toBe(true);
-    expect(normalized.symptoms).toEqual(["nausea", "dizziness", "blurry vision"]);
+    expect(normalized.symptoms).toBe("nausea, dizziness, blurry vision");
+  });
+
+  test("array symptoms also normalize to csv string", () => {
+    const { normalized } = validateIntake({
+      name: "X",
+      chiefComplaint: "headache",
+      symptoms: ["nausea", "dizziness"],
+    });
+    expect(normalized.symptoms).toBe("nausea, dizziness");
   });
 
   test("clamps painLevel to 0-10", () => {
-    const high = validateIntake({
-      name: "X",
-      age: 30,
-      chiefComplaint: "h",
-      painLevel: 99,
-    });
-    const low = validateIntake({
-      name: "X",
-      age: 30,
-      chiefComplaint: "h",
-      painLevel: -5,
-    });
+    const high = validateIntake({ name: "X", chiefComplaint: "h", painLevel: 99 });
+    const low = validateIntake({ name: "X", chiefComplaint: "h", painLevel: -5 });
     expect(high.normalized.pain_level).toBe(10);
     expect(low.normalized.pain_level).toBe(0);
   });
 
-  test("snake_cases keys for the DB shape", () => {
+  test("language defaults to 'en'", () => {
+    const { normalized } = validateIntake({ name: "X", chiefComplaint: "headache" });
+    expect(normalized.language).toBe("en");
+  });
+
+  test("language is preserved when provided", () => {
     const { normalized } = validateIntake({
       name: "X",
-      age: 30,
       chiefComplaint: "headache",
-      medicalHistory: ["asthma"],
-      heartRate: 80,
-      oxygenLevel: 98,
+      language: "es",
     });
-    expect(normalized).toMatchObject({
-      chief_complaint: "headache",
-      medical_history: ["asthma"],
-      heart_rate: 80,
-      oxygen_level: 98,
+    expect(normalized.language).toBe("es");
+  });
+
+  test("output shape matches DB columns", () => {
+    const { normalized } = validateIntake({
+      name: "Jane",
+      chiefComplaint: "headache",
+      symptoms: "nausea",
+      painLevel: 5,
+      language: "en",
     });
+    expect(Object.keys(normalized).sort()).toEqual(
+      ["chief_complaint", "language", "name", "pain_level", "symptoms"].sort(),
+    );
   });
 });
 
 describe("triage ESI 1 (immediate)", () => {
   test("unconscious patient", () => {
-    const r = process({ name: "X", age: 40, chiefComplaint: "found unconscious" });
+    const r = process({ name: "X", chiefComplaint: "found unconscious" });
     expect(r.esi_score).toBe(1);
     expect(r.wait_category).toBe("immediate");
     expect(r.red_flags.length).toBeGreaterThan(0);
   });
 
-  test("critical oxygen level", () => {
-    const r = process({
-      name: "X",
-      age: 40,
-      chiefComplaint: "trouble breathing",
-      oxygenLevel: 85,
-    });
-    expect(r.esi_score).toBe(1);
-  });
-
-  test("critical heart rate", () => {
-    const r = process({
-      name: "X",
-      age: 40,
-      chiefComplaint: "palpitations",
-      heartRate: 35,
-    });
-    expect(r.esi_score).toBe(1);
-  });
-
   test("life-threat keyword overrides low pain level", () => {
     const r = process({
       name: "X",
-      age: 22,
       chiefComplaint: "anaphylaxis after bee sting",
       painLevel: 1,
     });
@@ -115,7 +92,6 @@ describe("triage ESI 2 (priority)", () => {
   test("chest pain keyword", () => {
     const r = process({
       name: "X",
-      age: 54,
       chiefComplaint: "severe chest pain radiating to left arm",
     });
     expect(r.esi_score).toBe(2);
@@ -123,34 +99,14 @@ describe("triage ESI 2 (priority)", () => {
   });
 
   test("pain level 9 alone", () => {
-    const r = process({
-      name: "X",
-      age: 30,
-      chiefComplaint: "back injury",
-      painLevel: 9,
-    });
-    expect(r.esi_score).toBe(2);
-  });
-
-  test("abnormal vitals without keyword", () => {
-    const r = process({
-      name: "X",
-      age: 30,
-      chiefComplaint: "feeling weak",
-      oxygenLevel: 93,
-    });
+    const r = process({ name: "X", chiefComplaint: "back injury", painLevel: 9 });
     expect(r.esi_score).toBe(2);
   });
 });
 
 describe("triage ESI 3 (urgent)", () => {
   test("moderate pain", () => {
-    const r = process({
-      name: "X",
-      age: 30,
-      chiefComplaint: "ankle injury",
-      painLevel: 6,
-    });
+    const r = process({ name: "X", chiefComplaint: "ankle injury", painLevel: 6 });
     expect(r.esi_score).toBe(3);
     expect(r.wait_category).toBe("urgent");
   });
@@ -158,9 +114,8 @@ describe("triage ESI 3 (urgent)", () => {
   test("multiple symptoms", () => {
     const r = process({
       name: "X",
-      age: 30,
       chiefComplaint: "feeling unwell",
-      symptoms: ["fatigue", "mild headache", "runny nose"],
+      symptoms: "fatigue, mild headache, runny nose",
     });
     expect(r.esi_score).toBe(3);
   });
@@ -168,12 +123,7 @@ describe("triage ESI 3 (urgent)", () => {
 
 describe("triage ESI 4 / 5 (low acuity)", () => {
   test("ESI 4 from minor pain", () => {
-    const r = process({
-      name: "X",
-      age: 30,
-      chiefComplaint: "scraped knee",
-      painLevel: 3,
-    });
+    const r = process({ name: "X", chiefComplaint: "scraped knee", painLevel: 3 });
     expect(r.esi_score).toBe(4);
     expect(r.wait_category).toBe("standard");
   });
@@ -181,7 +131,6 @@ describe("triage ESI 4 / 5 (low acuity)", () => {
   test("ESI 5 trivial complaint", () => {
     const r = process({
       name: "X",
-      age: 22,
       chiefComplaint: "small paper cut",
       painLevel: 1,
     });
@@ -191,23 +140,19 @@ describe("triage ESI 4 / 5 (low acuity)", () => {
 });
 
 describe("triage output shape", () => {
-  test("processed patient has all expected fields", () => {
+  test("returns expected fields with text (not array) red_flags", () => {
     const r = process({
       name: "Jane",
-      age: 54,
       chiefComplaint: "chest pain",
       painLevel: 9,
-      heartRate: 115,
-      oxygenLevel: 92,
-      symptoms: ["nausea"],
+      symptoms: "nausea",
     });
     expect(r).toMatchObject({
       ok: true,
       esi_score: expect.any(Number),
       wait_category: expect.any(String),
-      red_flags: expect.any(Array),
-      suggested_actions: expect.any(Array),
-      triage_rationale: expect.any(String),
+      red_flags: expect.any(String),
+      clinical_rationale: expect.any(String),
     });
   });
 });
