@@ -14,8 +14,11 @@
 - JS only — no TypeScript
 - No new dependencies without checking with the team first
 
-## Team
-3 people working in parallel via feature branches and PRs.
+## Team Workflow
+- `main` is sacred — no direct pushes after scaffold
+- Branch naming: `feature/name-thing`, `fix/name-thing`
+- Always open a PR to merge into main
+- Roles: A = frontend, B = backend, C = glue/integration
 
 ## Code Conventions
 - **Variables/functions:** camelCase — **Constants:** UPPER_SNAKE_CASE
