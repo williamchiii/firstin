@@ -1,5 +1,6 @@
 import { validateIntake } from "@/lib/validate.js";
-import { triage } from "@/lib/triage.js";
+import { triage, esi1Trigger, buildEsi1Result } from "@/lib/triage.js";
+import { scorePatient } from "@/lib/scorePatient.js";
 import { jsonError, jsonOk, methodNotAllowed, readJsonBody } from "@/lib/http.js";
 import { supabase } from "@/lib/supabase.js";
 
@@ -10,18 +11,37 @@ export async function POST(req) {
   const { ok, errors, normalized } = validateIntake(parsed.body);
   if (!ok) return jsonError(errors, 400);
 
-  const triageResult = triage(normalized);
+  // 1. ESI-1 hard-stop: skip AI on life-threats
+  const trigger = esi1Trigger(normalized);
+  let scoring;
+  let scoring_source;
+
+  if (trigger) {
+    scoring = buildEsi1Result(trigger);
+    scoring_source = "esi1_hard_stop";
+  } else {
+    // 2. AI scoring with rule-based fallback
+    try {
+      scoring = await scorePatient(normalized);
+      scoring_source = "ai";
+    } catch (err) {
+      console.error("[intake] scorePatient failed, falling back to rules:", err);
+      scoring = triage(normalized);
+      scoring_source = "rule_based_fallback";
+    }
+  }
 
   // shape that matches the `patients` Supabase table
   const patient = {
     name: normalized.name,
     language: normalized.language,
+    patient_dob: normalized.patient_dob,
     chief_complaint: normalized.chief_complaint,
     symptoms: normalized.symptoms,
     pain_level: normalized.pain_level,
-    esi_score: triageResult.esi_score,
-    red_flags: triageResult.red_flags,
-    clinical_rationale: triageResult.clinical_rationale,
+    esi_score: scoring.esi_score,
+    red_flags: scoring.red_flags,
+    clinical_rationale: scoring.clinical_rationale,
     status: "waiting",
     // id, arrival_time, queue_position will be set on insert
   };
@@ -52,7 +72,11 @@ export async function POST(req) {
   }
 
   return jsonOk(
-    { patient: insertedPatient, wait_category: triageResult.wait_category },
+    {
+      patient: insertedPatient,
+      wait_category: scoring.wait_category,
+      scoring_source,
+    },
     201,
   );
 }
