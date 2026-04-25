@@ -17,6 +17,23 @@ function symptomCount(symptomsCsv) {
   return symptomsCsv.split(",").map((s) => s.trim()).filter(Boolean).length;
 }
 
+// quick ESI-1 check used to short-circuit AI scoring on life-threats
+// returns the matched keyword, or null if no hit
+export function esi1Trigger(p) {
+  const text = buildSearchText(p);
+  return ESI_1_KEYWORDS.find((k) => text.includes(k)) ?? null;
+}
+
+// builds the canned ESI-1 scoring object so we never delay on a life-threat
+export function buildEsi1Result(triggerKeyword) {
+  return {
+    esi_score: 1,
+    wait_category: ESI_TO_WAIT_CATEGORY[1],
+    red_flags: `life-threat keyword: ${triggerKeyword}`,
+    clinical_rationale: `ESI 1 hard-stop triggered by "${triggerKeyword}"`,
+  };
+}
+
 export function triage(p) {
   const text = buildSearchText(p);
   const red_flags = [];

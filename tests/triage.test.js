@@ -65,7 +65,7 @@ describe("validateIntake", () => {
       language: "en",
     });
     expect(Object.keys(normalized).sort()).toEqual(
-      ["chief_complaint", "language", "name", "pain_level", "symptoms"].sort(),
+      ["chief_complaint", "language", "name", "pain_level", "patient_dob", "symptoms"].sort(),
     );
   });
 });

@@ -33,6 +33,16 @@ function clamp(n, min, max) {
   return Math.min(max, Math.max(min, n));
 }
 
+//normalizes a date-of-birth input to ISO date string ("YYYY-MM-DD") or null
+function toDobOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const s = trimString(value);
+  if (!s) return null;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
 //checks the patient intake form to see if data is valid, then cleans it to a consistent format
 export function validateIntake(payload) {
   const errors = [];
@@ -49,6 +59,10 @@ export function validateIntake(payload) {
   }
 
   const painLevel = clamp(toNumberOrNull(payload.painLevel), 0, 10);
+  const patientDob = toDobOrNull(payload.patientDob);
+  if (payload.patientDob && !patientDob) {
+    errors.push("patientDob must be a valid date (e.g. YYYY-MM-DD)");
+  }
 
   if (errors.length > 0) {
     return { ok: false, errors, normalized: null };
@@ -60,6 +74,7 @@ export function validateIntake(payload) {
     chief_complaint: trimString(payload.chiefComplaint),
     symptoms: toCsvString(payload.symptoms),
     pain_level: painLevel,
+    patient_dob: patientDob,
   };
 
   return { ok: true, errors: [], normalized };
