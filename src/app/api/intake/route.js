@@ -1,6 +1,7 @@
 import { validateIntake } from "@/lib/validate.js";
 import { triage } from "@/lib/triage.js";
 import { jsonError, jsonOk, methodNotAllowed, readJsonBody } from "@/lib/http.js";
+import { supabase } from "@/lib/supabase.js";
 
 export async function POST(req) {
   const parsed = await readJsonBody(req);
@@ -25,14 +26,33 @@ export async function POST(req) {
     // id, arrival_time, queue_position will be set on insert
   };
 
-  // TODO(db-team): insert `patient` into the `patients` table.
-  //   - let Postgres set id / arrival_time via column defaults
-  //   - compute queue_position (e.g. count of waiting rows with esi_score <= patient.esi_score)
-  //   - .select().single() the inserted row and replace `patient` below with it
-  //   - on insert error, return jsonError(error.message, 500)
+  const { count, error: countError } = await supabase
+    .from("patients")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "waiting")
+    .lte("esi_score", patient.esi_score);
+
+  if (countError) {
+    console.error("supabase count error:", countError);
+    return jsonError(countError.message, 500);
+  }
+
+  const { data: insertedPatient, error: insertError } = await supabase
+    .from("patients")
+    .insert({
+      ...patient,
+      queue_position: (count ?? 0) + 1,
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    console.error("supabase insert error:", insertError);
+    return jsonError(insertError.message, 500);
+  }
 
   return jsonOk(
-    { patient, wait_category: triageResult.wait_category },
+    { patient: insertedPatient, wait_category: triageResult.wait_category },
     201,
   );
 }
