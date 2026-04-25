@@ -1,4 +1,4 @@
-import { REQUIRED_INTAKE_FIELDS } from "./constants";
+import { REQUIRED_INTAKE_FIELDS } from "./constants.js";
 
 //cleans up the whitespace
 function trimString(value) {

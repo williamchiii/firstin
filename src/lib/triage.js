@@ -3,7 +3,7 @@ import {
   ESI_2_KEYWORDS,
   ESI_TO_WAIT_CATEGORY,
   VITALS_THRESHOLDS,
-} from "./constants";
+} from "./constants.js";
 
 function buildSearchText(p) {
   return [p.chief_complaint, ...(p.symptoms || [])]
