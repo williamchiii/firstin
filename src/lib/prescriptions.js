@@ -1,6 +1,6 @@
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
- * @param {{ patient_id: string, prescribed_by: string, medications: string, dosage_notes: string, recovery_steps: string, follow_up_date: string, notes: string }} data
+ * @param {{ patient_id: string, prescribed_by: string, medications: string, dosage_notes: string, recovery_steps: string, follow_up_date: string, notes: string, audio_url: string|null }} data
  * @returns {Promise<{ ok: boolean, data?: object, error?: string }>}
  */
 export async function createPrescription(supabase, data) {
@@ -15,7 +15,7 @@ export async function createPrescription(supabase, data) {
         recovery_steps: data.recovery_steps,
         follow_up_date: data.follow_up_date,
         notes: data.notes,
-        audio_url: null,
+        audio_url: data.audio_url ?? null,
       })
       .select()
       .single();
