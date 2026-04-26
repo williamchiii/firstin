@@ -3,11 +3,11 @@
 import { Resend } from "resend";
 
 const CATEGORY_LABEL = {
-  immediate:   "Immediate — you will be seen right away",
-  emergent:    "Emergent — expect to be seen within 15 minutes",
-  urgent:      "Urgent — expect to be seen within 30 minutes",
-  "less-urgent": "Less urgent — expect to wait 1–2 hours",
-  "non-urgent":  "Non-urgent — expect to wait 2+ hours",
+  immediate:  "Immediate — you will be seen right away",
+  priority:   "Priority — expect to be seen within 15 minutes",
+  urgent:     "Urgent — expect to be seen within 30 minutes",
+  standard:   "Standard — expect to wait 1–2 hours",
+  non_urgent: "Non-urgent — expect to wait 2+ hours",
 };
 
 export async function sendTriageConfirmation({ to, esi, waitCategory, queuePosition, caseId }) {
