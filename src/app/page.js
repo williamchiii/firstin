@@ -109,21 +109,18 @@ export default function Home() {
             <TypewriterText text="How it works" />
           </p>
 
-          <ol className="grid divide-y divide-neutral-200 rounded-lg border border-neutral-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <div className="grid sm:grid-cols-3 gap-10">
             {HOW_IT_WORKS.map(({ step, title, description }) => (
-              <li key={step} className="flex flex-col gap-4 p-6">
-                <span className="text-[0.65rem] font-semibold tabular-nums tracking-[0.15em] text-neutral-400">
-                  {step}
-                </span>
+              <div key={step} className="flex flex-col gap-3">
                 <h3 className="font-semibold tracking-tight text-neutral-800">
                   {title}
                 </h3>
                 <p className="text-sm leading-relaxed text-neutral-500">
                   {description}
                 </p>
-              </li>
+              </div>
             ))}
-          </ol>
+          </div>
         </div>
       </section>
 
