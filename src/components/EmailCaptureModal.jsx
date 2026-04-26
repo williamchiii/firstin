@@ -2,10 +2,15 @@
 
 import { useState } from "react";
 
-export default function EmailCaptureModal({ caseId, patientId, queuePosition }) {
+export default function EmailCaptureModal({ caseId, patientId, queuePosition, onDone }) {
   const [uiState, setUiState] = useState("prompt"); // prompt | submitting | sent | skipped | error
   const [email, setEmail] = useState("");
   const [errorMsg, setErrorMsg] = useState(null);
+
+  function finish(state) {
+    setUiState(state);
+    onDone?.();
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -16,11 +21,11 @@ export default function EmailCaptureModal({ caseId, patientId, queuePosition }) 
       const res = await fetch("/api/patient/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ caseId, patientId, email }),
+        body: JSON.stringify({ patientId, email }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.errors?.[0] ?? "Failed to send email");
-      setUiState("sent");
+      finish("sent");
     } catch (err) {
       setErrorMsg(err.message);
       setUiState("error");
@@ -71,7 +76,7 @@ export default function EmailCaptureModal({ caseId, patientId, queuePosition }) 
         </button>
         <button
           type="button"
-          onClick={() => setUiState("skipped")}
+          onClick={() => finish("skipped")}
           className="px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-500 transition-colors hover:border-gray-300"
         >
           Skip

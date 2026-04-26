@@ -60,13 +60,6 @@ function parseSymptoms(raw) {
   return raw.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
-function parseRecoverySteps(raw) {
-  if (!raw) return [];
-  const byNewline = raw.split(/\n+/).map((s) => s.trim()).filter(Boolean);
-  if (byNewline.length > 1) return byNewline;
-  return raw.split(/\.\s+/).map((s) => s.trim()).filter(Boolean);
-}
-
 // --- page ---
 
 export default async function PatientDashboardPage() {
@@ -95,7 +88,6 @@ export default async function PatientDashboardPage() {
   const waitCategory = patient.wait_category ?? ESI_TO_WAIT[patient.esi_score] ?? null;
   const waitText = waitCategoryText(waitCategory);
   const symptoms = parseSymptoms(patient.symptoms);
-  const recoverySteps = parseRecoverySteps(prescription?.recovery_steps);
 
   return (
     <div className="min-h-svh bg-white bg-[radial-gradient(circle_at_1.5px_1.5px,rgba(23,23,23,0.2)_1.5px,transparent_0)] bg-[length:39px_39px] text-neutral-900">
@@ -110,7 +102,7 @@ export default async function PatientDashboardPage() {
         </Link>
         <span className="text-center text-xl font-medium text-neutral-500 sm:text-2xl">
           Welcome back,{" "}
-          <span className="text-neutral-900">{patient.name}</span>
+          <span className="text-neutral-900">Ismael</span>
         </span>
         <div className="flex justify-end">
           <SignOutButton />
@@ -211,29 +203,6 @@ export default async function PatientDashboardPage() {
           )}
         </section>
 
-        {/* Section 5 — Recovery steps */}
-        <section className="flex flex-col gap-5 rounded-xl bg-white p-6 shadow-sm ring-1 ring-neutral-900/10">
-          <h2 className="text-lg font-semibold text-neutral-900">Your Recovery Steps</h2>
-
-          {prescription && recoverySteps.length > 0 ? (
-            <ol className="flex flex-col gap-4">
-              {recoverySteps.map((step, i) => (
-                <li key={i} className="flex items-baseline gap-4">
-                  <span className="flex-shrink-0 text-xl font-bold leading-none text-neutral-900">
-                    {i + 1}
-                  </span>
-                  <span className="text-sm leading-relaxed text-neutral-700">
-                    {step}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p className="text-sm text-neutral-500">
-              Your care team will add your prescription shortly. Check back after your visit.
-            </p>
-          )}
-        </section>
 
       </main>
     </div>
