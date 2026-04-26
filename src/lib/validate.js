@@ -70,6 +70,7 @@ export function validateIntake(payload) {
 
   const normalized = {
     name: trimString(payload.name),
+    email: trimString(payload.email),
     language: trimString(payload.language) || "en",
     chief_complaint: trimString(payload.chiefComplaint),
     symptoms: toCsvString(payload.symptoms),

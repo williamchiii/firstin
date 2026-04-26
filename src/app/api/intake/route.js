@@ -44,6 +44,7 @@ export async function POST(req) {
   // because the order depends on every other row's status/esi_score.
   const patient = {
     name: normalized.name,
+    email: normalized.email,
     language: normalized.language,
     patient_dob: normalized.patient_dob,
     chief_complaint: normalized.chief_complaint,
@@ -76,7 +77,8 @@ export async function POST(req) {
       email_confirm: true,
       user_metadata: { patient_id: insertedPatient.id, name: insertedPatient.name },
     });
-    if (authError) console.error("[intake] auth createUser failed:", authError);
+    if (authError && authError.code !== "email_exists")
+      console.error("[intake] auth createUser failed:", authError);
   } catch (err) {
     console.error("[intake] auth createUser threw:", err);
   }
