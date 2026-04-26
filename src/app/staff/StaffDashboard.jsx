@@ -16,6 +16,7 @@ const FALLBACK_POLL_MS = 30000; // backup poll if realtime drops
 
 export default function StaffDashboard() {
   const [patients, setPatients] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("waiting");
   const [expandedPatientId, setExpandedPatientId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -36,7 +37,7 @@ export default function StaffDashboard() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    const initialRefresh = setTimeout(refresh, 0);
 
     const supabase = getSupabaseBrowser();
     const channel = supabase
@@ -52,13 +53,15 @@ export default function StaffDashboard() {
     const fallback = setInterval(refresh, FALLBACK_POLL_MS);
 
     return () => {
+      clearTimeout(initialRefresh);
       supabase.removeChannel(channel);
       clearInterval(fallback);
     };
   }, [refresh]);
 
-  const priorityPatient = patients[0];
-  const stackPatients = patients.slice(1);
+  const filteredPatients = patients.filter((p) => p.status === statusFilter);
+  const priorityPatient = filteredPatients[0];
+  const stackPatients = filteredPatients.slice(1);
 
   async function setStatus(id, status) {
     const prev = patients;
@@ -82,11 +85,33 @@ export default function StaffDashboard() {
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4">
       <div className="flex items-center justify-center text-center">
-        <div>
+        <div className="flex flex-col items-center gap-4">
           <h1 className="text-2xl font-semibold">Patient Queue</h1>
           <p className="text-sm text-muted-foreground">
             Triage queue based on priority
           </p>
+          <div className="flex rounded-lg border bg-white p-1 shadow-sm">
+            {STATUSES.map((status) => {
+              const active = statusFilter === status;
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter(status);
+                    setExpandedPatientId(null);
+                  }}
+                  className={`h-8 rounded-md px-3 text-xs font-semibold transition sm:px-4 sm:text-sm ${
+                    active
+                      ? "bg-neutral-900 text-white"
+                      : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                  }`}
+                >
+                  {statusLabel(status)}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -98,22 +123,24 @@ export default function StaffDashboard() {
 
       {loading ? (
         <div className="text-sm text-muted-foreground">Loading…</div>
-      ) : patients.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>No active patients</CardTitle>
-            <CardDescription>
-              When a patient checks in, they&apos;ll appear here.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+      ) : filteredPatients.length === 0 ? (
+        <div className="mx-auto w-full max-w-3xl">
+          <Card>
+            <CardHeader>
+              <CardTitle>No {statusLabel(statusFilter).toLowerCase()} patients</CardTitle>
+              <CardDescription>
+                Patients with this status will appear here.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
       ) : (
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
           <div className="rounded-2xl border bg-white/90 p-3 shadow-sm">
             <div>
               <div className="text-sm font-semibold">Top priority</div>
               <div className="text-xs text-muted-foreground">
-                Always showing the first patient in the priority queue
+                Showing the first {statusLabel(statusFilter).toLowerCase()} patient in priority order
               </div>
             </div>
           </div>
@@ -129,7 +156,7 @@ export default function StaffDashboard() {
                 </div>
               </div>
               <span className="text-xs font-semibold text-neutral-600">
-                {stackPatients.length} waiting
+                {stackPatients.length} more
               </span>
             </div>
 
@@ -445,7 +472,7 @@ function PatientDetails({ p, onStatus }) {
 
       {/* --- Actions row --- */}
       <div className="flex flex-wrap gap-2 pt-1">
-        {STATUSES.filter((s) => s !== p.status).map((s) => {
+        {STATUSES.filter((s) => s !== p.status && !(p.status === "completed" && s === "in_progress")).map((s) => {
           const isStart = s === "in_progress";
           return (
             <Button
@@ -463,7 +490,7 @@ function PatientDetails({ p, onStatus }) {
         {/* --- Prescription button (discharged / completed patients only) --- */}
         {isDischargedOrCompleted && !rxAdded && (
           <button
-            className="rounded border border-blue-600 px-3 py-1 text-sm text-blue-400 transition hover:bg-blue-600 hover:text-white"
+            className="rounded-lg border border-neutral-300 bg-white px-3 py-1 text-sm font-medium text-neutral-800 shadow-sm transition hover:border-neutral-500 hover:bg-neutral-50"
             onClick={() => setRxPanelOpen(true)}
           >
             Add Prescription
@@ -471,7 +498,7 @@ function PatientDetails({ p, onStatus }) {
         )}
 
         {rxAdded && (
-          <span className="rounded px-2 py-1 text-xs font-semibold" style={{ backgroundColor: "#14532d", color: "#86efac" }}>
+          <span className="rounded-lg bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
             Prescription Added
           </span>
         )}
@@ -482,21 +509,18 @@ function PatientDetails({ p, onStatus }) {
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40 bg-black/40"
+            className="fixed inset-0 z-40 bg-black/30"
             onClick={() => setRxPanelOpen(false)}
           />
 
           {/* Panel */}
-          <div
-            className="fixed right-0 top-0 z-50 h-full w-96 overflow-y-auto p-6"
-            style={{ backgroundColor: "#0F172A", borderLeft: "1px solid #1E293B" }}
-          >
+          <div className="fixed right-0 top-0 z-50 h-full w-full max-w-md overflow-y-auto border-l border-neutral-200 bg-white p-6 text-neutral-900 shadow-2xl">
             {/* Panel header */}
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-white">Add Prescription</h2>
+              <h2 className="text-base font-semibold text-neutral-900">Add Prescription</h2>
               <button
                 onClick={() => setRxPanelOpen(false)}
-                className="text-slate-400 transition hover:text-white text-xl leading-none"
+                className="text-xl leading-none text-neutral-400 transition hover:text-neutral-900"
                 aria-label="Close"
               >
                 ×
@@ -504,12 +528,9 @@ function PatientDetails({ p, onStatus }) {
             </div>
 
             {/* Patient context */}
-            <div
-              className="mb-6 rounded-lg p-3"
-              style={{ backgroundColor: "#0A0F1E", border: "1px solid #1E293B" }}
-            >
-              <p className="text-sm font-medium text-white">{p.name}</p>
-              <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>
+            <div className="mb-6 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+              <p className="text-sm font-medium text-neutral-900">{p.name}</p>
+              <p className="mt-0.5 text-xs text-neutral-500">
                 {p.chief_complaint}
               </p>
             </div>
@@ -522,8 +543,7 @@ function PatientDetails({ p, onStatus }) {
                   placeholder="List medications and dosages"
                   value={rxForm.medications}
                   onChange={(e) => setRxField("medications", e.target.value)}
-                  className="w-full resize-none rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-600"
-                  style={{ backgroundColor: "#0A0F1E", border: "1px solid #1E293B" }}
+                  className="w-full resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 outline-none focus:border-neutral-900"
                 />
               </RxField>
 
@@ -533,8 +553,7 @@ function PatientDetails({ p, onStatus }) {
                   placeholder="How and when to take each medication"
                   value={rxForm.dosage_notes}
                   onChange={(e) => setRxField("dosage_notes", e.target.value)}
-                  className="w-full resize-none rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-600"
-                  style={{ backgroundColor: "#0A0F1E", border: "1px solid #1E293B" }}
+                  className="w-full resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 outline-none focus:border-neutral-900"
                 />
               </RxField>
 
@@ -544,18 +563,14 @@ function PatientDetails({ p, onStatus }) {
                   placeholder="Step by step recovery instructions"
                   value={rxForm.recovery_steps}
                   onChange={(e) => setRxField("recovery_steps", e.target.value)}
-                  className="w-full resize-none rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-600"
-                  style={{ backgroundColor: "#0A0F1E", border: "1px solid #1E293B" }}
+                  className="w-full resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 outline-none focus:border-neutral-900"
                 />
               </RxField>
 
               <RxField label="Follow-Up Date" required>
-                <input
-                  type="date"
+                <DatePicker
                   value={rxForm.follow_up_date}
-                  onChange={(e) => setRxField("follow_up_date", e.target.value)}
-                  className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-blue-600"
-                  style={{ backgroundColor: "#0A0F1E", border: "1px solid #1E293B", colorScheme: "dark" }}
+                  onChange={(value) => setRxField("follow_up_date", value)}
                 />
               </RxField>
 
@@ -565,22 +580,21 @@ function PatientDetails({ p, onStatus }) {
                   placeholder="Any additional notes for the patient"
                   value={rxForm.notes}
                   onChange={(e) => setRxField("notes", e.target.value)}
-                  className="w-full resize-none rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-600"
-                  style={{ backgroundColor: "#0A0F1E", border: "1px solid #1E293B" }}
+                  className="w-full resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 outline-none focus:border-neutral-900"
                 />
               </RxField>
             </div>
 
             {/* Error */}
             {rxError && (
-              <p className="mt-4 text-sm text-red-400">{rxError}</p>
+              <p className="mt-4 rounded-md bg-red-50 p-2 text-sm text-red-700">{rxError}</p>
             )}
 
             {/* Submit */}
             <button
               onClick={handleRxSubmit}
               disabled={rxLoading || !rxForm.medications || !rxForm.dosage_notes || !rxForm.recovery_steps || !rxForm.follow_up_date}
-              className="mt-6 h-11 w-full rounded-lg bg-blue-600 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-6 h-11 w-full rounded-lg border border-neutral-900 bg-neutral-900 text-sm font-medium text-white shadow-sm transition hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {rxLoading ? "Saving…" : "Save and Send to Patient"}
             </button>
@@ -601,13 +615,175 @@ function PatientDetails({ p, onStatus }) {
 function RxField({ label, required = false, children }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-medium uppercase tracking-wide" style={{ color: "#94A3B8" }}>
+      <label className="text-xs font-medium uppercase tracking-wide text-neutral-500">
         {label}
-        {required && <span className="ml-1 text-blue-500">*</span>}
+        {required && <span className="ml-1 text-neutral-900">*</span>}
       </label>
       {children}
     </div>
   );
+}
+
+function DatePicker({ value, onChange }) {
+  const selectedDate = parseDateValue(value);
+  const [visibleMonth, setVisibleMonth] = useState(
+    selectedDate ?? startOfMonth(new Date()),
+  );
+
+  const todayValue = toDateValue(new Date());
+  const visibleYear = visibleMonth.getFullYear();
+  const visibleMonthIndex = visibleMonth.getMonth();
+  const firstDay = new Date(visibleYear, visibleMonthIndex, 1).getDay();
+  const daysInMonth = new Date(visibleYear, visibleMonthIndex + 1, 0).getDate();
+  const daysInPreviousMonth = new Date(visibleYear, visibleMonthIndex, 0).getDate();
+  const cells = [];
+
+  for (let index = 0; index < 42; index += 1) {
+    const dayNumber = index - firstDay + 1;
+    const inCurrentMonth = dayNumber >= 1 && dayNumber <= daysInMonth;
+    const displayDay = inCurrentMonth
+      ? dayNumber
+      : dayNumber < 1
+        ? daysInPreviousMonth + dayNumber
+        : dayNumber - daysInMonth;
+    const cellDate = new Date(
+      visibleYear,
+      visibleMonthIndex + (inCurrentMonth ? 0 : dayNumber < 1 ? -1 : 1),
+      displayDay,
+    );
+    const cellValue = toDateValue(cellDate);
+
+    cells.push({
+      date: cellDate,
+      displayDay,
+      inCurrentMonth,
+      value: cellValue,
+      selected: value === cellValue,
+      today: todayValue === cellValue,
+    });
+  }
+
+  function moveMonth(offset) {
+    setVisibleMonth((current) =>
+      startOfMonth(new Date(current.getFullYear(), current.getMonth() + offset, 1)),
+    );
+  }
+
+  function selectDate(cell) {
+    onChange(cell.value);
+    setVisibleMonth(startOfMonth(cell.date));
+  }
+
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-white p-3 shadow-sm">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <div className="text-sm font-semibold text-neutral-900">
+            {visibleMonth.toLocaleString("en-US", {
+              month: "long",
+              year: "numeric",
+            })}
+          </div>
+          <div className="text-xs text-neutral-500">
+            {value ? formatDateValue(value) : "Choose a follow-up date"}
+          </div>
+        </div>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => moveMonth(-1)}
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-neutral-50"
+            aria-label="Previous month"
+          >
+            &lt;
+          </button>
+          <button
+            type="button"
+            onClick={() => moveMonth(1)}
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-neutral-50"
+            aria-label="Next month"
+          >
+            &gt;
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 text-center">
+        {["S", "M", "T", "W", "T", "F", "S"].map((day) => (
+          <div key={day} className="py-1 text-xs font-semibold text-neutral-500">
+            {day}
+          </div>
+        ))}
+
+        {cells.map((cell) => (
+          <button
+            key={cell.value}
+            type="button"
+            onClick={() => selectDate(cell)}
+            className={`flex h-9 items-center justify-center rounded-lg text-sm font-medium transition ${
+              cell.selected
+                ? "bg-neutral-900 text-white shadow-sm"
+                : cell.today
+                  ? "bg-neutral-100 text-neutral-900 ring-1 ring-neutral-300"
+                  : cell.inCurrentMonth
+                    ? "text-neutral-900 hover:bg-neutral-100"
+                    : "text-neutral-300 hover:bg-neutral-50"
+            }`}
+          >
+            {cell.displayDay}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="text-xs font-semibold text-neutral-500 transition hover:text-neutral-900"
+        >
+          Clear
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            onChange(todayValue);
+            setVisibleMonth(startOfMonth(new Date()));
+          }}
+          className="text-xs font-semibold text-neutral-900 transition hover:text-neutral-600"
+        >
+          Today
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function parseDateValue(value) {
+  if (!value) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+}
+
+function toDateValue(date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateValue(value) {
+  const date = parseDateValue(value);
+  if (!date) return value;
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 function EsiBadge({ esi, wc }) {
@@ -641,6 +817,13 @@ function labelFor(status) {
   if (status === "waiting") return "Move to waiting";
   if (status === "in_progress") return "Start";
   if (status === "completed") return "Complete";
+  return status;
+}
+
+function statusLabel(status) {
+  if (status === "waiting") return "Waiting";
+  if (status === "in_progress") return "In progress";
+  if (status === "completed") return "Completed";
   return status;
 }
 
