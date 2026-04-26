@@ -26,19 +26,19 @@ export default function Home() {
         </div>
       </div>
 
-      <main className="mx-auto flex min-h-[calc(100vh-4.25rem)] w-full max-w-4xl flex-col items-center px-5 pb-16 pt-20 text-center sm:min-h-[calc(100vh-4.75rem)] sm:px-8 sm:pt-[6.5rem]">
+      <main className="mx-auto flex min-h-[calc(100vh-4.25rem)] w-full max-w-4xl flex-col items-center px-5 pb-16 pt-32 text-center sm:min-h-[calc(100vh-4.75rem)] sm:px-8 sm:pt-40">
         <div className="inline-flex max-w-full flex-col items-stretch">
           <h1 className="text-[3.6rem] font-bold leading-none tracking-tight text-neutral-800 sm:text-[4.8rem] lg:text-[6.4rem]">
             FirstIn
           </h1>
 
           <p className="mt-6 w-full text-xl font-normal leading-snug text-neutral-500 sm:text-2xl">
-          The next generation triage management.
+            The next generation triage management.
           </p>
         </div>
 
         <section
-          className="mt-10 w-full max-w-[23.2rem] text-left"
+          className="mt-10 w-full max-w-[23.2rem] text-center"
           aria-label="Choose how to continue"
         >
           <Link
@@ -48,10 +48,10 @@ export default function Home() {
             <span className="block text-base font-semibold tracking-tight text-neutral-800 sm:text-[1.2rem]">
               Patient check-in
             </span>
-            <span className="mt-2.5 block max-w-xs text-sm leading-relaxed text-neutral-500 sm:text-[0.9rem]">
+            <span className="mx-auto mt-2.5 block max-w-xs text-sm leading-relaxed text-neutral-500 sm:text-[0.9rem]">
               Answer a few questions and receive guidance on your next step.
             </span>
-            <span className="mt-5 inline-flex items-center gap-1 text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-neutral-500 transition group-hover:text-neutral-900">
+            <span className="mt-5 inline-flex items-center justify-center gap-1 text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-neutral-500 transition group-hover:text-neutral-900">
               Start intake
             </span>
           </Link>
