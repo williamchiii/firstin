@@ -50,6 +50,14 @@ function VoiceIntake() {
   useEffect(() => {
     if (phase !== "ending") return;
 
+    const patientMessages = messages.filter((m) => m.source === "user");
+    if (patientMessages.length === 0) {
+      // Agent disconnected before patient said anything — connection dropped early
+      setPhase("error");
+      setErrorMsg("The connection dropped before your intake was recorded. Please try again.");
+      return;
+    }
+
     const transcript = messages
       .map((m) => `${m.source === "ai" ? "Agent" : "Patient"}: ${m.message}`)
       .join("\n");
