@@ -292,12 +292,6 @@ function TextIntake({ onBack }) {
           <h2 className="text-2xl font-semibold text-gray-900">
             You&apos;re all set
           </h2>
-          <p className="text-gray-500 text-sm">
-            ESI level{" "}
-            <strong className="text-gray-800">{result.patient?.esi_score}</strong>{" "}
-            ·{" "}
-            <strong className="text-gray-800">{result.wait_category}</strong>
-          </p>
           <EmailForm patientId={result.patient?.id} />
         </div>
         </div>
