@@ -1,8 +1,9 @@
 import Link from "next/link";
+import TypewriterHeadline from "@/components/TypewriterHeadline";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white bg-[radial-gradient(circle_at_1.5px_1.5px,rgba(23,23,23,0.2)_1.5px,transparent_0)] bg-[length:26px_26px] text-neutral-900">
+    <div className="min-h-screen bg-white bg-[radial-gradient(circle_at_1.5px_1.5px,rgba(23,23,23,0.2)_1.5px,transparent_0)] bg-[length:39px_39px] text-neutral-900">
       <div className="flex items-center justify-between px-5 pt-5 sm:px-8 sm:pt-6 lg:px-[3.25rem]">
         <Link
           href="/"
@@ -32,9 +33,7 @@ export default function Home() {
             FirstIn
           </h1>
 
-          <p className="mt-6 w-full text-xl font-normal leading-snug text-neutral-500 sm:text-2xl">
-            The next generation triage management.
-          </p>
+          <TypewriterHeadline />
         </div>
 
         <section

@@ -8,7 +8,7 @@ export default async function StaffLoginPage({ searchParams }) {
   const from = typeof params.from === "string" ? params.from : "/staff";
   const denied = params.denied === "1";
   return (
-    <div className="min-h-svh bg-white bg-[radial-gradient(circle_at_1.5px_1.5px,rgba(23,23,23,0.2)_1.5px,transparent_0)] bg-[length:26px_26px] text-neutral-900">
+    <div className="min-h-svh bg-white bg-[radial-gradient(circle_at_1.5px_1.5px,rgba(23,23,23,0.2)_1.5px,transparent_0)] bg-[length:39px_39px] text-neutral-900">
       <div className="flex items-center justify-between px-5 pt-5 sm:px-8 sm:pt-6 lg:px-[3.25rem]">
         <Link
           href="/"
