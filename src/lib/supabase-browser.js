@@ -14,3 +14,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabaseBrowser = createClient(supabaseUrl, supabaseAnonKey);
+
+// Lazy accessor used by staff components.
+export function getSupabaseBrowser() {
+  return supabaseBrowser;
+}
