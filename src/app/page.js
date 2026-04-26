@@ -15,13 +15,13 @@ export default function Home() {
             href="/patient"
             className="inline-flex h-9 items-center rounded-md border border-neutral-900 bg-neutral-900 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-neutral-700 sm:h-10 sm:px-4 sm:text-sm"
           >
-            Patient login
+            Patient Login
           </Link>
           <Link
             href="/staff"
             className="inline-flex h-9 items-center rounded-md border border-neutral-300 bg-white px-3 text-xs font-semibold text-neutral-800 shadow-sm transition hover:border-neutral-500 hover:bg-neutral-50 sm:h-10 sm:px-4 sm:text-sm"
           >
-            Staff access
+            Staff Access
           </Link>
         </div>
       </div>
@@ -33,7 +33,7 @@ export default function Home() {
           </h1>
 
           <p className="mt-6 w-full text-xl font-normal leading-snug text-neutral-500 sm:text-2xl">
-            Know how urgent your symptoms are before you leave home.
+          The next generation triage management.
           </p>
         </div>
 
