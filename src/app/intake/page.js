@@ -321,13 +321,13 @@ function TextIntake({ onBack }) {
   return (
     <div className={`min-h-screen ${BG} flex flex-col`}>
       <div className="px-6 pt-10 pb-6 flex flex-col items-center gap-1 text-center">
-        <span className="text-xs font-medium tracking-widest text-gray-400 uppercase">
+        <span className="text-sm font-medium tracking-widest text-gray-400 uppercase">
           FirstIn
         </span>
-        <h1 className="text-xl font-semibold text-gray-900">Patient Intake</h1>
+        <h1 className="text-3xl font-semibold text-gray-900">Patient Intake</h1>
         <button
           onClick={onBack}
-          className="mt-2 text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
+          className="mt-2 text-sm text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
         >
           ← Switch to voice
         </button>
@@ -608,12 +608,6 @@ function VoiceIntake({ onBack }) {
           <div className="max-w-sm w-full flex flex-col items-center gap-6 text-center">
             <span className="text-5xl">✅</span>
             <h2 className="text-2xl font-semibold text-gray-900">You&apos;re all set</h2>
-            <p className="text-gray-500 text-sm">
-              ESI level{" "}
-              <strong className="text-gray-800">{finalizeResult.esi}</strong> ·
-              Queue position{" "}
-              <strong className="text-gray-800">#{finalizeResult.queuePosition}</strong>
-            </p>
             <EmailCaptureModal
               caseId={finalizeResult.caseId}
               patientId={finalizeResult.patientId}
@@ -684,11 +678,11 @@ function VoiceIntake({ onBack }) {
   return (
     <div className={`min-h-screen ${BG} flex flex-col`}>
       <div className="px-6 pt-10 pb-4 flex flex-col items-center gap-1 text-center">
-        <span className="text-xs font-medium tracking-widest text-gray-400 uppercase">FirstIn</span>
-        <h1 className="text-xl font-semibold text-gray-900">Voice Intake</h1>
+        <span className="text-sm font-medium tracking-widest text-gray-400 uppercase">FirstIn</span>
+        <h1 className="text-3xl font-semibold text-gray-900">Voice Intake</h1>
         <button
           onClick={onBack}
-          className="mt-2 text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
+          className="mt-2 text-sm text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
         >
           ← Switch to text
         </button>
