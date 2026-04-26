@@ -35,14 +35,25 @@ export async function POST(req) {
   const { chiefComplaint, symptoms, painLevel, redFlags, demographics } = parsedData;
   const resolvedComplaint = chiefComplaint || "Unknown — brief intake";
 
+  // Postgres date column requires ISO format (YYYY-MM-DD). Gemini may return
+  // natural language like "February 10th, 2002" — parse it or drop it.
+  function toIsoDate(raw) {
+    if (!raw) return null;
+    // Already ISO
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString().split("T")[0];
+  }
+
   // --- Score patient (AI with rule-based fallback) ---
   const normalized = {
     name: demographics?.name ?? "Unknown",
     language: "en",
     chief_complaint: resolvedComplaint,
     symptoms: symptoms?.join(", ") ?? "",
-    pain_level: painLevel ?? null,
-    patient_dob: demographics?.dob ?? null,
+    pain_level: typeof painLevel === "number" ? Math.round(painLevel) : null,
+    patient_dob: toIsoDate(demographics?.dob),
   };
 
   let scoring;
@@ -88,8 +99,8 @@ export async function POST(req) {
     .single();
 
   if (patientError) {
-    console.error("[finalize] patient insert error:", patientError);
-    return jsonError("Failed to save patient", 500);
+    console.error("[finalize] patient insert error:", patientError.message, patientError.details, patientError.hint);
+    return jsonError(`Failed to save patient: ${patientError.message}`, 500);
   }
 
   // --- Insert triage case (non-fatal — patient is already queued via patients row) ---

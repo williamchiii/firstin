@@ -17,6 +17,7 @@ function VoiceIntake() {
   const [finalizeResult, setFinalizeResult] = useState(null);
   const messagesEndRef = useRef(null);
   const hasConnectedRef = useRef(false);
+  const msgCounterRef = useRef(0);
 
   const conversation = useConversation({
     onConnect: () => {
@@ -24,13 +25,16 @@ function VoiceIntake() {
       setPhase("active");
     },
     onDisconnect: () => {
-      // Only finalize if we actually connected (avoids triggering on aborted starts)
       if (hasConnectedRef.current) {
         setPhase("ending");
       }
     },
     onMessage: ({ source, message }) => {
-      setMessages((prev) => [...prev, { source, message, id: Date.now() }]);
+      // Strip SSML/prosody tags like [slow], [fast], [pause] from display
+      const clean = message.replace(/\[\w+\]/g, "").trim();
+      if (!clean) return;
+      const id = `msg-${++msgCounterRef.current}`;
+      setMessages((prev) => [...prev, { source, message: clean, id }]);
     },
     onError: (msg) => {
       console.error("[intake] conversation error:", msg);
