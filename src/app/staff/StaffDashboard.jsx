@@ -9,9 +9,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getSupabaseBrowser } from "@/lib/supabase-browser.js";
 
 const STATUSES = ["waiting", "in_progress", "completed"];
-const POLL_MS = 5000;
+const FALLBACK_POLL_MS = 30000; // backup poll if realtime drops
 
 export default function StaffDashboard() {
   const [patients, setPatients] = useState([]);
@@ -34,11 +35,20 @@ export default function StaffDashboard() {
   }, []);
 
   useEffect(() => {
-    const initialRefresh = setTimeout(refresh, 0);
-    const t = setInterval(refresh, POLL_MS);
+    refresh();
+
+    const supabase = getSupabaseBrowser();
+    const channel = supabase
+      .channel("patients-queue")
+      .on("postgres_changes", { event: "*", schema: "public", table: "patients" }, refresh)
+      .subscribe();
+
+    // Fallback poll keeps the list fresh if the realtime socket drops
+    const fallback = setInterval(refresh, FALLBACK_POLL_MS);
+
     return () => {
-      clearTimeout(initialRefresh);
-      clearInterval(t);
+      supabase.removeChannel(channel);
+      clearInterval(fallback);
     };
   }, [refresh]);
 
