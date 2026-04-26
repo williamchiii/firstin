@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { Mic, MicOff, Volume2 } from "lucide-react";
+import EmailCaptureModal from "@/components/EmailCaptureModal.jsx";
 
 // --- Inner component (must be inside ConversationProvider) ---
 
@@ -106,7 +107,7 @@ function VoiceIntake() {
     isListening        ? "AI is listening" :
     phase === "active" ? "Connected" : null;
 
-  // --- Done: email capture (EmailCaptureModal wired in Phase 3) ---
+  // --- Done: show result + optional email capture ---
   if (phase === "done" && finalizeResult) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-6">
@@ -117,10 +118,11 @@ function VoiceIntake() {
             ESI level <strong className="text-gray-800">{finalizeResult.esi}</strong> ·
             Queue position <strong className="text-gray-800">#{finalizeResult.queuePosition}</strong>
           </p>
-          {/* EmailCaptureModal mounts here in Phase 3 */}
-          <p className="text-xs text-gray-400">
-            Phase 3 will add email capture here. Case ID: {finalizeResult.caseId}
-          </p>
+          <EmailCaptureModal
+            caseId={finalizeResult.caseId}
+            patientId={finalizeResult.patientId}
+            queuePosition={finalizeResult.queuePosition}
+          />
         </div>
       </div>
     );
