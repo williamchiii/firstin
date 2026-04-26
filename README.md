@@ -2,7 +2,7 @@
 
 > **"Because every second decides."**
 
-FirstIn is an AI-powered emergency room pre-triage system built at HackaBull VII at the University of South Florida. Patients check in at a hospital kiosk, describe their symptoms in their native language, and are scored by three parallel Gemini AI agents in under 5 seconds. The nurse dashboard reorders the patient queue in real time — the sickest patient is always first.
+FirstIn is an AI-powered emergency room pre-triage system built at HackaBull VII at the University of South Florida. Patients check in at a kiosk or on their phone, describe their symptoms in their native language, and are scored by a hybrid rule-based + Gemini AI engine in seconds. The nurse dashboard reorders the patient queue in real time — the sickest patient is always first.
 
 Built to address the language barriers that lead to misclassification and worse outcomes for non-English speaking patients in emergency care — with support for Spanish, Haitian Creole, Portuguese, and Vietnamese.
 
@@ -21,28 +21,29 @@ Built to address the language barriers that lead to misclassification and worse 
 
 ## How It Works
 
-1. **Patient arrives** — sits at a hospital-provided kiosk in the ER lobby
+1. **Patient arrives** — uses a hospital kiosk or their own phone
 2. **Selects language** — English, Spanish, Haitian Creole, Portuguese, or Vietnamese
-3. **Describes symptoms** — AI generates dynamic clinical follow-up questions based on their complaint
-4. **Three Gemini agents score in parallel** — Symptom Agent, History Agent, and Triage Agent run concurrently and produce an ESI score in under 5 seconds
-5. **Queue reorders live** — nurse dashboard updates instantly via Supabase Realtime
-6. **Patient receives audio confirmation** — ElevenLabs speaks their wait category back to them in their native language
-7. **Nurse acts** — full triage card, red flag alerts, and one-click SOAP report PDF generation
-8. **After discharge** — personalized recovery instructions sent by email and audio in their language, SMS check-in one week later
+3. **Checks in** — via text form or AI voice conversation (ElevenLabs Conversational AI)
+4. **Dynamic follow-up questions** — Gemini generates clinical follow-up questions tailored to the chief complaint
+5. **Hybrid triage scoring** — deterministic rule-based scoring runs first; Gemini (`gemini-2.5-flash`) validates and refines the ESI score; the more conservative score always wins
+6. **Queue reorders live** — nurse dashboard updates in real time via Supabase Realtime
+7. **Patient receives audio confirmation** — ElevenLabs TTS speaks the wait category back to them in their language
+8. **Patient tracks their status** — live queue position visible at `/patient/status`
+9. **Nurse acts** — full triage card, red flag alerts, SOAP note generation, and prescription logging from a single dashboard
 
 ---
 
 ## ESI Scoring System
 
-FirstIn uses a hybrid scoring approach — deterministic clinical rules run first, then three Gemini agents validate and refine the result. The more conservative score always wins.
+FirstIn uses a hybrid scoring approach — deterministic clinical rules run first, then a Gemini AI call validates and can override with a more conservative score.
 
-| ESI | Label | Severity Score | Description |
-|---|---|---|---|
-| 1 | Immediate | 80+ or hard-stop keyword | Life-threatening — bypasses AI entirely |
-| 2 | Emergent | 55–79 | High risk, could deteriorate fast |
-| 3 | Urgent | 35–54 | Needs treatment, currently stable |
-| 4 | Less Urgent | 15–34 | One resource needed |
-| 5 | Non-Urgent | Below 15 | Could be seen at urgent care |
+| ESI | Label | Description |
+|---|---|---|
+| 1 | Immediate | Life-threatening — bypasses AI entirely |
+| 2 | Emergent | High risk, could deteriorate fast |
+| 3 | Urgent | Needs treatment, currently stable |
+| 4 | Less Urgent | One resource needed |
+| 5 | Non-Urgent | Could be seen at urgent care |
 
 **Safety rules that cannot be overridden by AI:**
 - ESI-1 keywords (chest pain, stroke, seizure, severe bleeding, unconscious) trigger an immediate hard-stop before any AI call
@@ -59,12 +60,28 @@ FirstIn uses a hybrid scoring approach — deterministic clinical rules run firs
 | Framework | Next.js 16 (App Router, JavaScript) |
 | Styling | Tailwind v4 + shadcn/ui |
 | Database + Realtime | Supabase (PostgreSQL + Supabase Realtime) |
-| AI triage agents | Google Gemini API (gemini-1.5-pro) |
-| Dynamic follow-up questions | Google Gemini API (gemini-1.5-flash) |
-| Multilingual audio | ElevenLabs API (eleven_multilingual_v2) |
-| Discharge email | Resend |
-| SMS check-in | Twilio |
+| AI triage scoring | Google Gemini API (`gemini-2.5-flash`) |
+| Follow-up questions & SOAP notes | Google Gemini API (`gemini-2.0-flash`) |
+| Voice intake | ElevenLabs Conversational AI |
+| Multilingual TTS confirmation | ElevenLabs API (`eleven_multilingual_v2`) |
+| Triage confirmation email | Resend |
 | Deploy | Vercel |
+
+---
+
+## Features
+
+- **Text or voice intake** — patients can fill in a form or speak to an AI voice agent
+- **Multilingual support** — English, Spanish, Haitian Creole, Portuguese, Vietnamese
+- **AI-powered follow-up questions** — Gemini generates dynamic clinical questions based on the chief complaint
+- **Hybrid ESI scoring** — rule-based scoring with Gemini AI validation (most conservative score wins)
+- **Wound photo analysis** — optional photo upload analyzed by Gemini for clinical description
+- **Live staff dashboard** — real-time priority queue via Supabase Realtime
+- **SOAP note generation** — one-click AI-generated clinical notes for each patient
+- **Prescription logging** — authorized staff can issue and log prescriptions in the platform
+- **Patient status tracking** — patients see their live queue position at `/patient/status`
+- **Triage confirmation email** — Resend delivers a confirmation with ESI level and queue position
+- **Multilingual audio confirmation** — ElevenLabs TTS reads out the wait category in the patient's language
 
 ---
 
@@ -75,9 +92,8 @@ FirstIn uses a hybrid scoring approach — deterministic clinical rules run firs
 - Node.js 20+
 - A [Supabase](https://supabase.com) project
 - A [Google Gemini](https://aistudio.google.com) API key
-- An [ElevenLabs](https://elevenlabs.io) API key
-- A [Twilio](https://twilio.com) account (for SMS check-in)
-- A [Resend](https://resend.com) account (for discharge email)
+- An [ElevenLabs](https://elevenlabs.io) API key and Conversational AI agent
+- A [Resend](https://resend.com) account (for triage confirmation emails)
 
 ### Setup
 
@@ -103,14 +119,13 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key — server only, never expose to client |
 | `GEMINI_API_KEY` | Google Gemini API key |
-| `ELEVENLABS_API_KEY` | ElevenLabs API key |
-| `ELEVENLABS_MOCK_MODE` | Set to true to skip ElevenLabs calls during local dev |
-| `USE_MOCK_GEMINI` | Set to true to use hardcoded AI responses for demo resilience |
-| `TWILIO_ACCOUNT_SID` | Twilio account SID |
-| `TWILIO_AUTH_TOKEN` | Twilio auth token |
-| `TWILIO_PHONE_NUMBER` | Twilio sending phone number |
-| `RESEND_API_KEY` | Resend API key for discharge emails |
-| `STAFF_ALLOWED_EMAILS` | Comma-separated emails permitted to access /staff |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key (TTS + voice intake) |
+| `ELEVENLABS_AGENT_ID` | ElevenLabs Conversational AI agent ID (server-side) |
+| `NEXT_PUBLIC_ELEVENLABS_AGENT_ID` | ElevenLabs agent ID (client-side, for the voice widget) |
+| `ELEVENLABS_MOCK_MODE` | Set to `true` to skip ElevenLabs TTS calls during local dev |
+| `RESEND_API_KEY` | Resend API key for triage confirmation emails |
+| `EMAIL_FROM` | Sender address for confirmation emails (default: `onboarding@resend.dev`) |
+| `STAFF_ALLOWED_EMAILS` | Comma-separated emails permitted to access `/staff` |
 
 ---
 
