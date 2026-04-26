@@ -1,30 +1,35 @@
-// POST /api/report
-// owner: AI team (Gemini)
-//
-// REQUEST SHAPE
-//   { patient: <processed patient from /api/intake response> }
-//   or
-//   { patient_id: "<uuid>" }   // look up the row from Supabase
-//
-// RESPONSE SHAPE (success)
-//   200 { ok: true, report: { subjective, objective, assessment, plan } }
-//
-// RESPONSE SHAPE (error)
-//   400 { ok: false, errors: ["..."] }   // bad input
-//   404 { ok: false, errors: ["patient not found"] }
-//   502 { ok: false, errors: ["upstream AI error"] }   // Gemini failure
-//
-// NOTES
-//   - keep API key server-side only (process.env.GEMINI_API_KEY)
-//   - on Gemini failure, return 502 — frontend should show a fallback
-//   - SOAP fields should be plain strings (no markdown), one paragraph each
-//   - never expose patient PII in error messages
+import { jsonError, jsonOk, methodNotAllowed, readJsonBody } from "@/lib/http.js";
+import { generateSOAPNote } from "@/lib/gemini.js";
+import { supabase } from "@/lib/supabase.js";
 
-import { jsonError, methodNotAllowed } from "@/lib/http.js";
+export async function POST(req) {
+  const parsed = await readJsonBody(req);
+  if (!parsed.ok) return jsonError(parsed.error, 400);
 
-export async function POST() {
-  // TODO(ai-team): implement Gemini-backed SOAP report
-  return jsonError("not implemented", 501);
+  const { patient_id, patient: patientPayload } = parsed.body;
+
+  let patientData = patientPayload ?? null;
+
+  if (!patientData && patient_id) {
+    const { data, error } = await supabase
+      .from("patients")
+      .select("id, name, chief_complaint, symptoms, pain_level, esi_score, red_flags, clinical_rationale, status, arrival_time")
+      .eq("id", patient_id)
+      .single();
+
+    if (error || !data) return jsonError("patient not found", 404);
+    patientData = data;
+  }
+
+  if (!patientData) return jsonError("patient or patient_id is required", 400);
+
+  try {
+    const note = await generateSOAPNote(patientData);
+    return jsonOk({ report: note });
+  } catch (err) {
+    console.error("[report] generateSOAPNote failed:", err);
+    return jsonError("upstream AI error", 502);
+  }
 }
 
 export async function GET() {

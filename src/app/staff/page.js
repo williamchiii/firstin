@@ -2,7 +2,7 @@ import Link from "next/link";
 import StaffDashboard from "./StaffDashboard";
 import StaffTopActions from "./StaffTopActions";
 
-export const metadata = { title: "Staff dashboard — WaitWise" };
+export const metadata = { title: "Staff dashboard — FirstIn" };
 
 export default function StaffPage() {
   return (
