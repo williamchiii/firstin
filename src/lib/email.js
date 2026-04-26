@@ -10,12 +10,16 @@ const CATEGORY_LABEL = {
   non_urgent: "Non-urgent — expect to wait 2+ hours",
 };
 
-export async function sendTriageConfirmation({ to, esi, waitCategory, queuePosition, caseId }) {
+export async function sendTriageConfirmation({ to, esi, waitCategory, queuePosition, patientId }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY is not set in .env.local");
 
-  const from = process.env.EMAIL_FROM ?? "triage@firstin.local";
-  const categoryLabel = CATEGORY_LABEL[waitCategory] ?? waitCategory;
+  // onboarding@resend.dev works on free tier without a verified domain.
+  // Set EMAIL_FROM in .env.local to a verified domain address for production.
+  const from = process.env.EMAIL_FROM ?? "onboarding@resend.dev";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const categoryLabel = CATEGORY_LABEL[waitCategory] ?? waitCategory ?? "—";
+  const statusUrl = appUrl && patientId ? `${appUrl}/patient/status?patientId=${patientId}` : null;
 
   const resend = new Resend(apiKey);
 
@@ -37,13 +41,17 @@ export async function sendTriageConfirmation({ to, esi, waitCategory, queuePosit
             <td style="padding:10px 0;border-bottom:1px solid #eee;font-weight:600;text-align:right">${categoryLabel}</td>
           </tr>
           <tr>
-            <td style="padding:10px 0;border-bottom:1px solid #eee;color:#888;font-size:13px">Queue position</td>
-            <td style="padding:10px 0;border-bottom:1px solid #eee;font-weight:600;text-align:right">#${queuePosition}</td>
+            <td style="padding:10px 0;${statusUrl ? "border-bottom:1px solid #eee;" : ""}color:#888;font-size:13px">Queue position</td>
+            <td style="padding:10px 0;${statusUrl ? "border-bottom:1px solid #eee;" : ""}font-weight:600;text-align:right">#${queuePosition}</td>
           </tr>
+          ${statusUrl ? `
           <tr>
-            <td style="padding:10px 0;color:#888;font-size:13px">Case reference</td>
-            <td style="padding:10px 0;font-family:monospace;font-size:12px;text-align:right;color:#555">${caseId}</td>
-          </tr>
+            <td colspan="2" style="padding:16px 0 0">
+              <a href="${statusUrl}" style="display:block;text-align:center;background:#111;color:#fff;text-decoration:none;font-size:14px;font-weight:500;padding:12px;border-radius:8px">
+                Check live queue status →
+              </a>
+            </td>
+          </tr>` : ""}
         </table>
         <p style="font-size:12px;color:#aaa;margin-top:24px">FirstIn — Emergency Triage System</p>
       </div>

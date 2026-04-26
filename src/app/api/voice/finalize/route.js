@@ -5,6 +5,15 @@ import { triage } from "@/lib/triage.js";
 import { ESI_TO_WAIT_CATEGORY } from "@/lib/constants.js";
 import { supabase } from "@/lib/supabase.js";
 
+// Convert natural-language dates (e.g. "February 10th, 2002") to ISO YYYY-MM-DD.
+function toIsoDate(raw) {
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString().split("T")[0];
+}
+
 export async function POST(req) {
   const parsed = await readJsonBody(req);
   if (!parsed.ok) return jsonError(parsed.error, 400);
@@ -14,13 +23,16 @@ export async function POST(req) {
     return jsonError("transcript is required", 400);
   }
 
+  console.log("[finalize] transcript length:", transcript.length, "chars");
+  console.log("[finalize] transcript preview:\n", transcript.slice(0, 400));
+
   // --- Parse transcript with Gemini (fallback to minimal data on failure) ---
   let parsedData;
   try {
     parsedData = await parseVoiceTranscript(transcript);
+    console.log("[finalize] Gemini parsed:", JSON.stringify(parsedData));
   } catch (err) {
     console.error("[finalize] parseVoiceTranscript failed, using fallback:", err);
-    // Don't crash — save what we have so the patient still gets a queue position
     parsedData = {
       chiefComplaint: "Unknown — brief intake",
       symptoms: [],
@@ -33,28 +45,19 @@ export async function POST(req) {
   }
 
   const { chiefComplaint, symptoms, painLevel, redFlags, demographics } = parsedData;
-  const resolvedComplaint = chiefComplaint || "Unknown — brief intake";
-
-  // Postgres date column requires ISO format (YYYY-MM-DD). Gemini may return
-  // natural language like "February 10th, 2002" — parse it or drop it.
-  function toIsoDate(raw) {
-    if (!raw) return null;
-    // Already ISO
-    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-    const d = new Date(raw);
-    if (isNaN(d.getTime())) return null;
-    return d.toISOString().split("T")[0];
-  }
+  const resolvedComplaint = chiefComplaint?.trim() || "Unknown — brief intake";
 
   // --- Score patient (AI with rule-based fallback) ---
   const normalized = {
-    name: demographics?.name ?? "Unknown",
+    name: demographics?.name?.trim() || "Unknown",
     language: "en",
     chief_complaint: resolvedComplaint,
-    symptoms: symptoms?.join(", ") ?? "",
+    symptoms: Array.isArray(symptoms) ? symptoms.join(", ") : (symptoms ?? ""),
     pain_level: typeof painLevel === "number" ? Math.round(painLevel) : null,
     patient_dob: toIsoDate(demographics?.dob),
   };
+
+  console.log("[finalize] normalized patient:", JSON.stringify(normalized));
 
   let scoring;
   try {
@@ -63,20 +66,6 @@ export async function POST(req) {
     console.error("[finalize] scorePatient failed, falling back to rules:", err);
     scoring = triage(normalized);
   }
-
-  // --- Queue position: count cases ahead with equal or better ESI ---
-  const { count: aheadCount, error: countError } = await supabase
-    .from("triage_cases")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "waiting")
-    .lte("esi_score", scoring.esi_score);
-
-  if (countError) {
-    console.error("[finalize] queue count error:", countError);
-    return jsonError("Database error", 500);
-  }
-
-  const queuePosition = (aheadCount ?? 0) + 1;
 
   // --- Insert patient row ---
   const { data: patient, error: patientError } = await supabase
@@ -92,6 +81,7 @@ export async function POST(req) {
       red_flags: scoring.red_flags,
       clinical_rationale: scoring.clinical_rationale,
       status: "waiting",
+      arrival_time: new Date().toISOString(),
       ...(email ? { email } : {}),
     })
     .select("id")
@@ -102,6 +92,17 @@ export async function POST(req) {
     return jsonError(`Failed to save patient: ${patientError.message}`, 500);
   }
 
+  // Derive real queue position from the patients table — same source as /api/queue,
+  // so the confirmation screen and the status page always show the same number.
+  const { data: queueRows } = await supabase
+    .from("patients")
+    .select("id")
+    .in("status", ["waiting", "in_progress"])
+    .order("esi_score", { ascending: true })
+    .order("arrival_time", { ascending: true });
+
+  const queuePosition = Math.max(1, (queueRows ?? []).findIndex((r) => r.id === patient.id) + 1);
+
   // --- Insert triage case (non-fatal — patient is already queued via patients row) ---
   const { data: triageCase, error: caseError } = await supabase
     .from("triage_cases")
@@ -111,7 +112,7 @@ export async function POST(req) {
       parsed_json: parsedData,
       esi_score: scoring.esi_score,
       chief_complaint: resolvedComplaint,
-      symptoms: symptoms ?? [],
+      symptoms: Array.isArray(symptoms) ? symptoms : [],
       pain_level: painLevel ?? null,
       red_flags: Array.isArray(redFlags) ? redFlags : [],
       clinical_rationale: scoring.clinical_rationale,
@@ -122,7 +123,6 @@ export async function POST(req) {
     .single();
 
   if (caseError) {
-    // Log but don't fail — the patient row is saved and they're in the queue
     console.error("[finalize] triage_case insert error (non-fatal):", caseError.message);
   }
 

@@ -18,6 +18,9 @@ function VoiceIntake() {
   const messagesEndRef = useRef(null);
   const hasConnectedRef = useRef(false);
   const msgCounterRef = useRef(0);
+  // Mirror of messages state — lets the finalize effect read the latest messages
+  // without depending on React re-render timing when onDisconnect fires.
+  const messagesRef = useRef([]);
 
   const conversation = useConversation({
     onConnect: () => {
@@ -30,11 +33,13 @@ function VoiceIntake() {
       }
     },
     onMessage: ({ source, message }) => {
-      // Strip SSML/prosody tags like [slow], [fast], [pause] from display
-      const clean = message.replace(/\[\w+\]/g, "").trim();
+      // Strip any [Tag] SSML/prosody markers (e.g. [Warmly], [slow], [pause])
+      const clean = message.replace(/\[[^\]]+\]/g, "").trim();
       if (!clean) return;
       const id = `msg-${++msgCounterRef.current}`;
-      setMessages((prev) => [...prev, { source, message: clean, id }]);
+      const entry = { source, message: clean, id };
+      messagesRef.current = [...messagesRef.current, entry];
+      setMessages((prev) => [...prev, entry]);
     },
     onError: (msg) => {
       console.error("[intake] conversation error:", msg);
@@ -54,15 +59,16 @@ function VoiceIntake() {
   useEffect(() => {
     if (phase !== "ending") return;
 
-    const patientMessages = messages.filter((m) => m.source === "user");
+    // Use the ref — has all messages regardless of render timing
+    const currentMessages = messagesRef.current;
+    const patientMessages = currentMessages.filter((m) => m.source === "user");
     if (patientMessages.length === 0) {
-      // Agent disconnected before patient said anything — connection dropped early
       setPhase("error");
       setErrorMsg("The connection dropped before your intake was recorded. Please try again.");
       return;
     }
 
-    const transcript = messages
+    const transcript = currentMessages
       .map((m) => `${m.source === "ai" ? "Agent" : "Patient"}: ${m.message}`)
       .join("\n");
 
@@ -87,12 +93,15 @@ function VoiceIntake() {
     }
 
     finalize();
-  }, [phase, messages]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   // --- Start session ---
   const handleStart = useCallback(async () => {
     setPhase("connecting");
     setMessages([]);
+    messagesRef.current = [];
+    msgCounterRef.current = 0;
     hasConnectedRef.current = false;
     try {
       const res = await fetch("/api/voice/token");

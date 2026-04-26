@@ -16,7 +16,7 @@ export default function EmailCaptureModal({ caseId, patientId, queuePosition }) 
       const res = await fetch("/api/patient/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ caseId, patientId, email }),
+        body: JSON.stringify({ patientId, email }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.errors?.[0] ?? "Failed to send email");

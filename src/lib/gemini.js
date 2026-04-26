@@ -62,7 +62,15 @@ export async function parseVoiceTranscript(transcript) {
 Transcript:
 ${transcript}
 
-Extract all medical information mentioned. For chiefComplaint, use the patient's own words summarized clinically. For symptoms, list each distinct symptom. For painLevel, use the 0-10 scale if mentioned. For redFlags, include any life-threatening indicators (chest pain, difficulty breathing, altered consciousness, severe bleeding, etc.). For demographics, extract name, age, or date of birth if mentioned. For emailMentioned, capture any email address the patient provided.`;
+Rules:
+- chiefComplaint: the patient's primary reason for visiting, summarized clinically (e.g. "high fever and body aches"). Never leave empty if any symptoms or reason were mentioned.
+- symptoms: list each distinct symptom the patient mentions
+- painLevel: numeric 0-10 if mentioned, otherwise null
+- redFlags: life-threatening indicators (chest pain, difficulty breathing, altered consciousness, severe bleeding, etc.)
+- demographics.name: the patient's name — extract even if only the agent says it (e.g. "Thank you, Mr. Smith" means name is "Mr. Smith")
+- demographics.dob: date of birth if mentioned, return as-is (e.g. "February 25th, 1904")
+- demographics.age: age if mentioned
+- emailMentioned: any email address the patient provides`;
 
   const response = await ai.models.generateContent({
     model: MODEL,

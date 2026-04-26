@@ -22,6 +22,8 @@ const WAIT_LABEL = {
   non_urgent: "Non-urgent",
 };
 
+const ESI_TO_WAIT = { 1: "immediate", 2: "priority", 3: "urgent", 4: "standard", 5: "non_urgent" };
+
 export default function PatientStatusPage() {
   const searchParams = useSearchParams();
   const caseId = searchParams.get("caseId");
@@ -30,17 +32,16 @@ export default function PatientStatusPage() {
   const [patient, setPatient] = useState(null);
 
   async function poll() {
-    if (!caseId) { setState("not-found"); return; }
+    const patientId = searchParams.get("patientId");
+    if (!patientId && !caseId) { setState("not-found"); return; }
     try {
       const res = await fetch("/api/queue", { cache: "no-store" });
       const data = await res.json();
       if (!data.ok) throw new Error("Queue unavailable");
 
-      // Find this patient in the live queue by matching triage case → patient id
-      // The finalize route returns patientId, which we use to find the queue row.
-      // We store patientId in the URL via the intake done screen.
-      const patientId = searchParams.get("patientId");
-      const found = (data.patients ?? []).find((p) => p.id === patientId);
+      const found = (data.patients ?? []).find(
+        (p) => p.id === patientId || p.id === caseId,
+      );
 
       if (found) {
         setPatient(found);
@@ -67,6 +68,9 @@ export default function PatientStatusPage() {
       <div className="px-6 pt-8 pb-4 flex items-center justify-between">
         <Link href="/" className="text-sm font-semibold tracking-tight text-neutral-800">
           FirstIn
+        </Link>
+        <Link href="/" className="text-xs text-neutral-400 underline underline-offset-2 hover:text-neutral-600">
+          Back to home
         </Link>
       </div>
 
@@ -101,7 +105,7 @@ export default function PatientStatusPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-500">Category</span>
                   <span className="font-semibold text-neutral-900">
-                    {WAIT_LABEL[patient.wait_category] ?? patient.wait_category ?? "—"}
+                    {WAIT_LABEL[patient.wait_category ?? ESI_TO_WAIT[patient.esi_score]] ?? "—"}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
