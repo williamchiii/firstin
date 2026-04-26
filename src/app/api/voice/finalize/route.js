@@ -14,26 +14,32 @@ export async function POST(req) {
     return jsonError("transcript is required", 400);
   }
 
-  // --- Parse transcript with Gemini ---
+  // --- Parse transcript with Gemini (fallback to minimal data on failure) ---
   let parsedData;
   try {
     parsedData = await parseVoiceTranscript(transcript);
   } catch (err) {
-    console.error("[finalize] parseVoiceTranscript failed:", err);
-    return jsonError("Failed to parse transcript", 502);
+    console.error("[finalize] parseVoiceTranscript failed, using fallback:", err);
+    // Don't crash — save what we have so the patient still gets a queue position
+    parsedData = {
+      chiefComplaint: "Unknown — brief intake",
+      symptoms: [],
+      painLevel: null,
+      duration: null,
+      redFlags: [],
+      demographics: null,
+      emailMentioned: null,
+    };
   }
 
   const { chiefComplaint, symptoms, painLevel, redFlags, demographics } = parsedData;
-
-  if (!chiefComplaint) {
-    return jsonError("Could not extract chief complaint from transcript", 422);
-  }
+  const resolvedComplaint = chiefComplaint || "Unknown — brief intake";
 
   // --- Score patient (AI with rule-based fallback) ---
   const normalized = {
     name: demographics?.name ?? "Unknown",
     language: "en",
-    chief_complaint: chiefComplaint,
+    chief_complaint: resolvedComplaint,
     symptoms: symptoms?.join(", ") ?? "",
     pain_level: painLevel ?? null,
     patient_dob: demographics?.dob ?? null,
@@ -68,7 +74,7 @@ export async function POST(req) {
       name: normalized.name,
       language: normalized.language,
       patient_dob: normalized.patient_dob,
-      chief_complaint: chiefComplaint,
+      chief_complaint: resolvedComplaint,
       symptoms: normalized.symptoms,
       pain_level: normalized.pain_level,
       esi_score: scoring.esi_score,
@@ -94,7 +100,7 @@ export async function POST(req) {
       transcript,
       parsed_json: parsedData,
       esi_score: scoring.esi_score,
-      chief_complaint: chiefComplaint,
+      chief_complaint: resolvedComplaint,
       symptoms: symptoms ?? [],
       pain_level: painLevel ?? null,
       red_flags: Array.isArray(redFlags) ? redFlags : [],
