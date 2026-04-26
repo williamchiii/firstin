@@ -10,12 +10,20 @@ export default function ConfirmationPage() {
         >
           FirstIn
         </Link>
-        <Link
-          href="/"
-          className="inline-flex h-9 items-center rounded-md border border-neutral-300 bg-white px-3 text-xs font-semibold text-neutral-800 shadow-sm transition hover:border-neutral-500 hover:bg-neutral-50 sm:h-10 sm:px-4 sm:text-sm"
-        >
-          Home
-        </Link>
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/patient/dashboard"
+            className="inline-flex h-9 items-center rounded-md border border-neutral-900 bg-neutral-900 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-neutral-700 sm:h-10 sm:px-4 sm:text-sm"
+          >
+            Patient Dashboard
+          </Link>
+          <Link
+            href="/staff"
+            className="inline-flex h-9 items-center rounded-md border border-neutral-300 bg-white px-3 text-xs font-semibold text-neutral-800 shadow-sm transition hover:border-neutral-500 hover:bg-neutral-50 sm:h-10 sm:px-4 sm:text-sm"
+          >
+            Staff Access
+          </Link>
+        </div>
       </div>
 
       <main className="flex min-h-[calc(100svh-4rem)] items-center justify-center p-6">

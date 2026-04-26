@@ -23,6 +23,23 @@ export async function PATCH(req, { params }) {
   const parsed = await readJsonBody(req);
   if (!parsed.ok) return jsonError(parsed.error, 400);
 
+  // --- Email-only update ---
+  if (parsed.body?.email !== undefined) {
+    const email = parsed.body.email?.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return jsonError("invalid email address", 400);
+    }
+    const { data, error } = await supabase
+      .from("patients")
+      .update({ email })
+      .eq("id", id)
+      .select()
+      .maybeSingle();
+    if (error) return jsonError(error.message, 500);
+    if (!data) return jsonError("patient not found", 404);
+    return jsonOk({ patient: data });
+  }
+
   const status = parsed.body?.status;
   if (!ALLOWED_STATUSES.includes(status)) {
     return jsonError(

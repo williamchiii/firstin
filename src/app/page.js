@@ -1,6 +1,7 @@
 import Link from "next/link";
 import TypewriterHeadline from "@/components/TypewriterHeadline";
 import TypewriterText from "@/components/TypewriterText";
+import CheckInButton from "@/components/CheckInButton";
 
 // --- Static data ---
 const HOW_IT_WORKS = [
@@ -97,20 +98,7 @@ export default function Home() {
           className="mt-8 w-full max-w-[20rem] text-center"
           aria-label="Patient check-in"
         >
-          <Link
-            href="/intake"
-            className="group block rounded-lg border border-neutral-800 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 focus-visible:ring-offset-4 sm:p-4"
-          >
-            <span className="block text-sm font-semibold tracking-tight text-neutral-800 sm:text-base">
-              Patient check-in
-            </span>
-            <span className="mx-auto mt-1.5 block max-w-xs text-xs leading-snug text-neutral-500 sm:text-sm">
-              Answer a few questions and receive guidance on your next step.
-            </span>
-            <span className="mt-3 inline-flex items-center justify-center gap-1 text-[0.55rem] font-semibold uppercase tracking-[0.1em] text-neutral-500 transition group-hover:text-neutral-900">
-              Start intake
-            </span>
-          </Link>
+          <CheckInButton />
         </section>
       </main>
 
@@ -121,21 +109,18 @@ export default function Home() {
             <TypewriterText text="How it works" />
           </p>
 
-          <ol className="grid divide-y divide-neutral-200 rounded-lg border border-neutral-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <div className="grid sm:grid-cols-3 gap-10">
             {HOW_IT_WORKS.map(({ step, title, description }) => (
-              <li key={step} className="flex flex-col gap-4 p-6">
-                <span className="text-[0.65rem] font-semibold tabular-nums tracking-[0.15em] text-neutral-400">
-                  {step}
-                </span>
+              <div key={step} className="flex flex-col gap-3">
                 <h3 className="font-semibold tracking-tight text-neutral-800">
                   {title}
                 </h3>
                 <p className="text-sm leading-relaxed text-neutral-500">
                   {description}
                 </p>
-              </li>
+              </div>
             ))}
-          </ol>
+          </div>
         </div>
       </section>
 
