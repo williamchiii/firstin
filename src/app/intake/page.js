@@ -111,10 +111,10 @@ function VoiceIntake() {
   // --- Done: show result + optional email capture ---
   if (phase === "done" && finalizeResult) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-6">
+      <div className="min-h-screen bg-white bg-[radial-gradient(circle_at_1.5px_1.5px,rgba(23,23,23,0.2)_1.5px,transparent_0)] bg-[length:26px_26px] flex items-center justify-center px-6">
         <div className="max-w-sm w-full flex flex-col items-center gap-6 text-center">
           <span className="text-5xl">✅</span>
-          <h2 className="text-2xl font-semibold text-gray-900">You're all set</h2>
+          <h2 className="text-2xl font-semibold text-gray-900">You&apos;re all set</h2>
           <p className="text-gray-500 text-sm">
             ESI level <strong className="text-gray-800">{finalizeResult.esi}</strong> ·
             Queue position <strong className="text-gray-800">#{finalizeResult.queuePosition}</strong>
@@ -138,7 +138,7 @@ function VoiceIntake() {
   // --- Error state ---
   if (phase === "error") {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-6">
+      <div className="min-h-screen bg-white bg-[radial-gradient(circle_at_1.5px_1.5px,rgba(23,23,23,0.2)_1.5px,transparent_0)] bg-[length:26px_26px] flex items-center justify-center px-6">
         <div className="max-w-sm w-full flex flex-col items-center gap-6 text-center">
           <span className="text-5xl">⚠️</span>
           <h2 className="text-2xl font-semibold text-gray-900">Something went wrong</h2>
@@ -155,7 +155,7 @@ function VoiceIntake() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white bg-[radial-gradient(circle_at_1.5px_1.5px,rgba(23,23,23,0.2)_1.5px,transparent_0)] bg-[length:26px_26px] flex flex-col">
 
       {/* Header */}
       <div className="px-6 pt-10 pb-4 flex flex-col items-center gap-1 text-center">
