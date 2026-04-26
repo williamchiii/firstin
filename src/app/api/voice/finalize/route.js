@@ -92,7 +92,7 @@ export async function POST(req) {
     return jsonError("Failed to save patient", 500);
   }
 
-  // --- Insert triage case ---
+  // --- Insert triage case (non-fatal — patient is already queued via patients row) ---
   const { data: triageCase, error: caseError } = await supabase
     .from("triage_cases")
     .insert({
@@ -112,13 +112,13 @@ export async function POST(req) {
     .single();
 
   if (caseError) {
-    console.error("[finalize] triage_case insert error:", caseError);
-    return jsonError("Failed to save triage case", 500);
+    // Log but don't fail — the patient row is saved and they're in the queue
+    console.error("[finalize] triage_case insert error (non-fatal):", caseError.message);
   }
 
   return jsonOk(
     {
-      caseId: triageCase.id,
+      caseId: triageCase?.id ?? patient.id,
       patientId: patient.id,
       esi: scoring.esi_score,
       waitCategory: ESI_TO_WAIT_CATEGORY[scoring.esi_score],
