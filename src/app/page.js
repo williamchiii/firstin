@@ -12,13 +12,13 @@ export default function Home() {
         </Link>
         <div className="flex items-center gap-3">
           <Link
-            href="/patient"
+            href="/intake"
             className="inline-flex h-11 items-center rounded-lg border border-neutral-900 bg-neutral-900 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-700 sm:h-12 sm:px-5 sm:text-base"
           >
-            Patient login
+            Patient check-in
           </Link>
           <Link
-            href="/api/queue"
+            href="/staff"
             className="inline-flex h-11 items-center rounded-lg border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-800 shadow-sm transition hover:border-neutral-500 hover:bg-neutral-50 sm:h-12 sm:px-5 sm:text-base"
           >
             Staff access
@@ -42,7 +42,7 @@ export default function Home() {
           aria-label="Choose how to continue"
         >
           <Link
-            href="/patient"
+            href="/intake"
             className="group block rounded-2xl border-2 border-neutral-800 bg-white p-8 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 focus-visible:ring-offset-4 sm:p-10"
           >
             <span className="block text-2xl font-semibold tracking-tight text-neutral-800 sm:text-3xl">
