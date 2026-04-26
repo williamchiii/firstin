@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { Mic, MicOff, Volume2 } from "lucide-react";
 import EmailCaptureModal from "@/components/EmailCaptureModal.jsx";
@@ -123,6 +124,12 @@ function VoiceIntake() {
             patientId={finalizeResult.patientId}
             queuePosition={finalizeResult.queuePosition}
           />
+          <Link
+            href={`/patient/status?patientId=${finalizeResult.patientId}&caseId=${finalizeResult.caseId}`}
+            className="text-xs text-gray-400 underline underline-offset-2 hover:text-gray-600"
+          >
+            Check live queue status
+          </Link>
         </div>
       </div>
     );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -69,7 +69,7 @@ export default function StaffDashboard() {
         <div>
           <h1 className="text-2xl font-semibold">Patient queue</h1>
           <p className="text-sm text-muted-foreground">
-            Triage Queue based on priority
+            Triage queue based on priority
           </p>
         </div>
       </div>
@@ -208,6 +208,62 @@ function PatientCard({ p, onStatus, featured = false }) {
 }
 
 function PatientDetails({ p, onStatus }) {
+  const [soap, setSoap] = useState(null);       // null | string | "error"
+  const [soapLoading, setSoapLoading] = useState(false);
+  const [ttsState, setTtsState] = useState("idle"); // idle | loading | playing | error
+  const audioRef = useRef(null);
+
+  async function fetchSoap() {
+    setSoapLoading(true);
+    setSoap(null);
+    try {
+      const res = await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patient_id: p.id }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.errors?.[0] ?? "Failed to generate note");
+      setSoap(data.report);
+    } catch (err) {
+      console.error("[soap] error:", err);
+      setSoap("error");
+    } finally {
+      setSoapLoading(false);
+    }
+  }
+
+  async function playConfirmation() {
+    if (ttsState === "playing") {
+      audioRef.current?.pause();
+      setTtsState("idle");
+      return;
+    }
+    setTtsState("loading");
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: p.id, type: "confirmation" }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.errors?.[0] ?? `TTS failed (${res.status})`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      setTtsState("playing");
+      audio.onended = () => { setTtsState("idle"); URL.revokeObjectURL(url); };
+      audio.onerror = () => { setTtsState("error"); URL.revokeObjectURL(url); };
+      audio.play();
+    } catch (err) {
+      console.error("[tts] error:", err);
+      setTtsState("error");
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3 text-sm">
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-muted-foreground">
@@ -217,9 +273,12 @@ function PatientDetails({ p, onStatus }) {
         <div className="text-foreground">{p.symptoms || "—"}</div>
         <div>Red flags</div>
         <div className="text-foreground">{p.red_flags || "—"}</div>
+        <div>Rationale</div>
+        <div className="text-foreground">{p.clinical_rationale || "—"}</div>
         <div>Status</div>
         <div className="text-foreground">{p.status}</div>
       </div>
+
       <div className="flex flex-wrap gap-2 pt-1">
         {STATUSES.filter((s) => s !== p.status).map((s) => (
           <Button key={s} size="sm" variant="outline" onClick={() => onStatus(p.id, s)}>
@@ -227,6 +286,34 @@ function PatientDetails({ p, onStatus }) {
           </Button>
         ))}
       </div>
+
+      <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+        <Button size="sm" variant="outline" disabled={soapLoading} onClick={fetchSoap}>
+          {soapLoading ? "Generating…" : soap && soap !== "error" ? "Regenerate SOAP" : "SOAP note"}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={ttsState === "loading"}
+          onClick={playConfirmation}
+        >
+          {ttsState === "loading" ? "Loading audio…" :
+           ttsState === "playing" ? "Stop audio" :
+           "▶ Play confirmation"}
+        </Button>
+        {ttsState === "error" && (
+          <span className="text-xs text-destructive">Audio unavailable</span>
+        )}
+      </div>
+
+      {soap && soap !== "error" && (
+        <div className="rounded-lg border bg-neutral-50 p-3 text-xs leading-relaxed whitespace-pre-wrap text-neutral-700">
+          {soap}
+        </div>
+      )}
+      {soap === "error" && (
+        <p className="text-xs text-destructive">Failed to generate SOAP note.</p>
+      )}
     </div>
   );
 }
@@ -234,9 +321,7 @@ function PatientDetails({ p, onStatus }) {
 function EsiBadge({ esi, wc }) {
   return (
     <div className="flex flex-col items-end gap-0.5 text-right">
-      <span className="text-xs font-semibold text-foreground">
-        ESI {esi ?? "?"}
-      </span>
+      <span className="text-xs font-semibold text-foreground">ESI {esi ?? "?"}</span>
       <span className="text-xs text-muted-foreground">{(wc || "").replace("_", " ")}</span>
     </div>
   );

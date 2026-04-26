@@ -1,7 +1,7 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "WaitWise — Hospital Triage",
+  title: "FirstIn — Hospital Triage",
   description: "Voice-first AI triage for emergency departments",
 };
 

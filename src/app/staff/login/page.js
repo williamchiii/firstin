@@ -1,7 +1,7 @@
 import Link from "next/link";
 import StaffLoginForm from "./StaffLoginForm";
 
-export const metadata = { title: "Staff sign-in — WaitWise" };
+export const metadata = { title: "Staff sign-in — FirstIn" };
 
 export default async function StaffLoginPage({ searchParams }) {
   const params = (await searchParams) || {};
