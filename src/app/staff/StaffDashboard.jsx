@@ -263,6 +263,58 @@ function PatientDetails({ p, onStatus }) {
   const [ttsState, setTtsState] = useState("idle"); // idle | loading | playing | error
   const audioRef = useRef(null);
 
+  // --- prescription state ---
+  const [rxPanelOpen, setRxPanelOpen] = useState(false);
+  const [rxForm, setRxForm] = useState({
+    medications: "",
+    dosage_notes: "",
+    recovery_steps: "",
+    follow_up_date: "",
+    notes: "",
+  });
+  const [rxLoading, setRxLoading] = useState(false);
+  const [rxError, setRxError] = useState("");
+  const [rxAdded, setRxAdded] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+
+  const isDischargedOrCompleted =
+    p.status === "completed" || p.status === "discharged";
+
+  function setRxField(field, value) {
+    setRxForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleRxSubmit() {
+    setRxLoading(true);
+    setRxError("");
+    try {
+      const res = await fetch("/api/prescription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patient_id: p.id,
+          prescribed_by: "Nurse",
+          medications: rxForm.medications,
+          dosage_notes: rxForm.dosage_notes,
+          recovery_steps: rxForm.recovery_steps,
+          follow_up_date: rxForm.follow_up_date,
+          notes: rxForm.notes,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok)
+        throw new Error(data.errors?.[0] ?? data.error ?? "Failed to save prescription");
+      setRxPanelOpen(false);
+      setRxAdded(true);
+      setToastVisible(true);
+      setTimeout(() => setToastVisible(false), 3000);
+    } catch (err) {
+      setRxError(err.message);
+    } finally {
+      setRxLoading(false);
+    }
+  }
+
   async function fetchSoap() {
     setSoapLoading(true);
     setSoap(null);
@@ -391,6 +443,7 @@ function PatientDetails({ p, onStatus }) {
         </div>
       )}
 
+      {/* --- Actions row --- */}
       <div className="flex flex-wrap gap-2 pt-1">
         {STATUSES.filter((s) => s !== p.status).map((s) => {
           const isStart = s === "in_progress";
@@ -406,7 +459,153 @@ function PatientDetails({ p, onStatus }) {
             </Button>
           );
         })}
+
+        {/* --- Prescription button (discharged / completed patients only) --- */}
+        {isDischargedOrCompleted && !rxAdded && (
+          <button
+            className="rounded border border-blue-600 px-3 py-1 text-sm text-blue-400 transition hover:bg-blue-600 hover:text-white"
+            onClick={() => setRxPanelOpen(true)}
+          >
+            Add Prescription
+          </button>
+        )}
+
+        {rxAdded && (
+          <span className="rounded px-2 py-1 text-xs font-semibold" style={{ backgroundColor: "#14532d", color: "#86efac" }}>
+            Prescription Added
+          </span>
+        )}
       </div>
+
+      {/* --- Prescription slide-over panel --- */}
+      {rxPanelOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-40 bg-black/40"
+            onClick={() => setRxPanelOpen(false)}
+          />
+
+          {/* Panel */}
+          <div
+            className="fixed right-0 top-0 z-50 h-full w-96 overflow-y-auto p-6"
+            style={{ backgroundColor: "#0F172A", borderLeft: "1px solid #1E293B" }}
+          >
+            {/* Panel header */}
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-white">Add Prescription</h2>
+              <button
+                onClick={() => setRxPanelOpen(false)}
+                className="text-slate-400 transition hover:text-white text-xl leading-none"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Patient context */}
+            <div
+              className="mb-6 rounded-lg p-3"
+              style={{ backgroundColor: "#0A0F1E", border: "1px solid #1E293B" }}
+            >
+              <p className="text-sm font-medium text-white">{p.name}</p>
+              <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>
+                {p.chief_complaint}
+              </p>
+            </div>
+
+            {/* Form fields */}
+            <div className="flex flex-col gap-5">
+              <RxField label="Medications" required>
+                <textarea
+                  rows={3}
+                  placeholder="List medications and dosages"
+                  value={rxForm.medications}
+                  onChange={(e) => setRxField("medications", e.target.value)}
+                  className="w-full resize-none rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-600"
+                  style={{ backgroundColor: "#0A0F1E", border: "1px solid #1E293B" }}
+                />
+              </RxField>
+
+              <RxField label="Dosage Instructions" required>
+                <textarea
+                  rows={3}
+                  placeholder="How and when to take each medication"
+                  value={rxForm.dosage_notes}
+                  onChange={(e) => setRxField("dosage_notes", e.target.value)}
+                  className="w-full resize-none rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-600"
+                  style={{ backgroundColor: "#0A0F1E", border: "1px solid #1E293B" }}
+                />
+              </RxField>
+
+              <RxField label="Recovery Steps" required>
+                <textarea
+                  rows={4}
+                  placeholder="Step by step recovery instructions"
+                  value={rxForm.recovery_steps}
+                  onChange={(e) => setRxField("recovery_steps", e.target.value)}
+                  className="w-full resize-none rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-600"
+                  style={{ backgroundColor: "#0A0F1E", border: "1px solid #1E293B" }}
+                />
+              </RxField>
+
+              <RxField label="Follow-Up Date" required>
+                <input
+                  type="date"
+                  value={rxForm.follow_up_date}
+                  onChange={(e) => setRxField("follow_up_date", e.target.value)}
+                  className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-blue-600"
+                  style={{ backgroundColor: "#0A0F1E", border: "1px solid #1E293B", colorScheme: "dark" }}
+                />
+              </RxField>
+
+              <RxField label="Additional Notes">
+                <textarea
+                  rows={2}
+                  placeholder="Any additional notes for the patient"
+                  value={rxForm.notes}
+                  onChange={(e) => setRxField("notes", e.target.value)}
+                  className="w-full resize-none rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-600"
+                  style={{ backgroundColor: "#0A0F1E", border: "1px solid #1E293B" }}
+                />
+              </RxField>
+            </div>
+
+            {/* Error */}
+            {rxError && (
+              <p className="mt-4 text-sm text-red-400">{rxError}</p>
+            )}
+
+            {/* Submit */}
+            <button
+              onClick={handleRxSubmit}
+              disabled={rxLoading || !rxForm.medications || !rxForm.dosage_notes || !rxForm.recovery_steps || !rxForm.follow_up_date}
+              className="mt-6 h-11 w-full rounded-lg bg-blue-600 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {rxLoading ? "Saving…" : "Save and Send to Patient"}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* --- Toast --- */}
+      {toastVisible && (
+        <div className="fixed right-4 top-4 z-50 rounded-lg bg-green-600 px-4 py-3 text-sm font-medium text-white shadow-lg">
+          Prescription saved and sent to patient
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RxField({ label, required = false, children }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-medium uppercase tracking-wide" style={{ color: "#94A3B8" }}>
+        {label}
+        {required && <span className="ml-1 text-blue-500">*</span>}
+      </label>
+      {children}
     </div>
   );
 }
