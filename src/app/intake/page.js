@@ -68,7 +68,9 @@ function VoiceIntake() {
       } catch (err) {
         console.error("[intake] finalize error:", err);
         setPhase("error");
-        setErrorMsg("We had trouble saving your intake. Please speak to a staff member.");
+        setErrorMsg(
+          "We had trouble saving your intake. Please speak to a staff member.",
+        );
       }
     }
 
@@ -85,15 +87,21 @@ function VoiceIntake() {
       const body = await res.json();
       if (!res.ok) {
         console.error("[intake] token route error:", body);
-        throw new Error(body?.errors?.[0] ?? `Token request failed (${res.status})`);
+        throw new Error(
+          body?.errors?.[0] ?? `Token request failed (${res.status})`,
+        );
       }
       const { conversationToken } = body;
-      if (!conversationToken) throw new Error("No conversation token in response");
+      if (!conversationToken)
+        throw new Error("No conversation token in response");
       await conversation.startSession({ conversationToken });
     } catch (err) {
       console.error("[intake] start error:", err);
       setPhase("error");
-      setErrorMsg(err.message ?? "Could not connect to the voice agent. Please try again.");
+      setErrorMsg(
+        err.message ??
+          "Could not connect to the voice agent. Please try again.",
+      );
     }
   }, [conversation]);
 
@@ -103,21 +111,32 @@ function VoiceIntake() {
 
   // --- Status indicator label ---
   const statusLabel =
-    phase === "connecting" ? "Connecting…" :
-    isSpeaking         ? "AI is speaking" :
-    isListening        ? "AI is listening" :
-    phase === "active" ? "Connected" : null;
+    phase === "connecting"
+      ? "Connecting…"
+      : isSpeaking
+        ? "AI is speaking"
+        : isListening
+          ? "AI is listening"
+          : phase === "active"
+            ? "Connected"
+            : null;
 
   // --- Done: show result + optional email capture ---
   if (phase === "done" && finalizeResult) {
     return (
-      <div className="min-h-screen bg-white bg-[radial-gradient(circle_at_1.5px_1.5px,rgba(23,23,23,0.2)_1.5px,transparent_0)] bg-[length:26px_26px] flex items-center justify-center px-6">
+      <div className="min-h-screen bg-white bg-[radial-gradient(circle_at_1.5px_1.5px,rgba(23,23,23,0.2)_1.5px,transparent_0)] bg-[length:39px_39px] flex items-center justify-center px-6">
         <div className="max-w-sm w-full flex flex-col items-center gap-6 text-center">
           <span className="text-5xl">✅</span>
-          <h2 className="text-2xl font-semibold text-gray-900">You&apos;re all set</h2>
+          <h2 className="text-2xl font-semibold text-gray-900">
+            You&apos;re all set
+          </h2>
           <p className="text-gray-500 text-sm">
-            ESI level <strong className="text-gray-800">{finalizeResult.esi}</strong> ·
-            Queue position <strong className="text-gray-800">#{finalizeResult.queuePosition}</strong>
+            ESI level{" "}
+            <strong className="text-gray-800">{finalizeResult.esi}</strong> ·
+            Queue position{" "}
+            <strong className="text-gray-800">
+              #{finalizeResult.queuePosition}
+            </strong>
           </p>
           <EmailCaptureModal
             caseId={finalizeResult.caseId}
@@ -138,13 +157,18 @@ function VoiceIntake() {
   // --- Error state ---
   if (phase === "error") {
     return (
-      <div className="min-h-screen bg-white bg-[radial-gradient(circle_at_1.5px_1.5px,rgba(23,23,23,0.2)_1.5px,transparent_0)] bg-[length:26px_26px] flex items-center justify-center px-6">
+      <div className="min-h-screen bg-white bg-[radial-gradient(circle_at_1.5px_1.5px,rgba(23,23,23,0.2)_1.5px,transparent_0)] bg-[length:39px_39px] flex items-center justify-center px-6">
         <div className="max-w-sm w-full flex flex-col items-center gap-6 text-center">
           <span className="text-5xl">⚠️</span>
-          <h2 className="text-2xl font-semibold text-gray-900">Something went wrong</h2>
+          <h2 className="text-2xl font-semibold text-gray-900">
+            Something went wrong
+          </h2>
           <p className="text-gray-500 text-sm">{errorMsg}</p>
           <button
-            onClick={() => { setPhase("idle"); setErrorMsg(null); }}
+            onClick={() => {
+              setPhase("idle");
+              setErrorMsg(null);
+            }}
             className="px-6 py-2 rounded-full bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 transition-colors"
           >
             Try again
@@ -155,11 +179,12 @@ function VoiceIntake() {
   }
 
   return (
-    <div className="min-h-screen bg-white bg-[radial-gradient(circle_at_1.5px_1.5px,rgba(23,23,23,0.2)_1.5px,transparent_0)] bg-[length:26px_26px] flex flex-col">
-
+    <div className="min-h-screen bg-white bg-[radial-gradient(circle_at_1.5px_1.5px,rgba(23,23,23,0.2)_1.5px,transparent_0)] bg-[length:39px_39px] flex flex-col">
       {/* Header */}
       <div className="px-6 pt-10 pb-4 flex flex-col items-center gap-1 text-center">
-        <span className="text-xs font-medium tracking-widest text-gray-400 uppercase">FirstIn</span>
+        <span className="text-xs font-medium tracking-widest text-gray-400 uppercase">
+          FirstIn
+        </span>
         <h1 className="text-xl font-semibold text-gray-900">Voice Intake</h1>
       </div>
 
@@ -174,10 +199,14 @@ function VoiceIntake() {
           </>
         )}
         {phase === "connecting" && (
-          <span className="text-sm text-gray-400 animate-pulse">Connecting…</span>
+          <span className="text-sm text-gray-400 animate-pulse">
+            Connecting…
+          </span>
         )}
         {phase === "ending" && (
-          <span className="text-sm text-gray-400 animate-pulse">Processing your intake…</span>
+          <span className="text-sm text-gray-400 animate-pulse">
+            Processing your intake…
+          </span>
         )}
       </div>
 
@@ -228,9 +257,13 @@ function VoiceIntake() {
           <div className="flex flex-col items-center gap-3">
             <div className="flex items-center gap-2 text-xs text-gray-400">
               {isSpeaking ? (
-                <><Volume2 className="w-3.5 h-3.5" /> AI speaking</>
+                <>
+                  <Volume2 className="w-3.5 h-3.5" /> AI speaking
+                </>
               ) : (
-                <><Mic className="w-3.5 h-3.5" /> Listening</>
+                <>
+                  <Mic className="w-3.5 h-3.5" /> Listening
+                </>
               )}
             </div>
             <button
