@@ -1,7 +1,12 @@
 import { validateIntake } from "@/lib/validate.js";
 import { triage, esi1Trigger, buildEsi1Result } from "@/lib/triage.js";
 import { scorePatient } from "@/lib/scorePatient.js";
-import { jsonError, jsonOk, methodNotAllowed, readJsonBody } from "@/lib/http.js";
+import {
+  jsonError,
+  jsonOk,
+  methodNotAllowed,
+  readJsonBody,
+} from "@/lib/http.js";
 import { supabase } from "@/lib/supabase.js";
 
 export async function POST(req) {
@@ -25,7 +30,10 @@ export async function POST(req) {
       scoring = await scorePatient(normalized);
       scoring_source = "ai";
     } catch (err) {
-      console.error("[intake] scorePatient failed, falling back to rules:", err);
+      console.error(
+        "[intake] scorePatient failed, falling back to rules:",
+        err,
+      );
       scoring = triage(normalized);
       scoring_source = "rule_based_fallback";
     }
@@ -45,7 +53,7 @@ export async function POST(req) {
     red_flags: scoring.red_flags,
     clinical_rationale: scoring.clinical_rationale,
     status: "waiting",
-    // id, arrival_time set on insert by Postgres defaults
+    arrival_time: new Date().toISOString(),
   };
 
   const { data: insertedPatient, error: insertError } = await supabase

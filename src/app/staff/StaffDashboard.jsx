@@ -24,7 +24,8 @@ export default function StaffDashboard() {
     try {
       const res = await fetch("/api/queue", { cache: "no-store" });
       const data = await res.json();
-      if (!data.ok) throw new Error(data.errors?.join("; ") || `queue ${res.status}`);
+      if (!data.ok)
+        throw new Error(data.errors?.join("; ") || `queue ${res.status}`);
       setPatients(data.patients || []);
       setError("");
     } catch (err) {
@@ -40,7 +41,11 @@ export default function StaffDashboard() {
     const supabase = getSupabaseBrowser();
     const channel = supabase
       .channel("patients-queue")
-      .on("postgres_changes", { event: "*", schema: "public", table: "patients" }, refresh)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "patients" },
+        refresh,
+      )
       .subscribe();
 
     // Fallback poll keeps the list fresh if the realtime socket drops
@@ -65,7 +70,8 @@ export default function StaffDashboard() {
         body: JSON.stringify({ status }),
       });
       const data = await res.json();
-      if (!data.ok) throw new Error(data.errors?.join("; ") || `update ${res.status}`);
+      if (!data.ok)
+        throw new Error(data.errors?.join("; ") || `update ${res.status}`);
       refresh();
     } catch (err) {
       setError(err.message);
@@ -77,7 +83,7 @@ export default function StaffDashboard() {
     <div className="mx-auto flex max-w-5xl flex-col gap-4">
       <div className="flex items-center justify-center text-center">
         <div>
-          <h1 className="text-2xl font-semibold">Patient queue</h1>
+          <h1 className="text-2xl font-semibold">Patient Queue</h1>
           <p className="text-sm text-muted-foreground">
             Triage queue based on priority
           </p>
@@ -132,50 +138,68 @@ export default function StaffDashboard() {
                 <div className="rounded-xl border border-dashed bg-white/70 p-3 text-sm text-muted-foreground">
                   No other patients in the queue.
                 </div>
-              ) : stackPatients.map((p) => {
-                const expanded = expandedPatientId === p.id;
-                const wc = p.wait_category || waitCategoryFromEsi(p.esi_score);
-                const isEsi1 = p.esi_score === 1;
-                return (
-                  <div
-                    key={p.id}
-                    className={`rounded-xl border transition ${
-                      expanded
-                        ? isEsi1
-                          ? "border-red-200 bg-red-50/80 text-neutral-800 shadow-md"
-                          : "border-neutral-900 bg-white text-neutral-800 shadow-md"
-                        : isEsi1
-                          ? "border-red-200 bg-red-50/80 text-neutral-800 shadow-sm hover:-translate-y-0.5 hover:border-red-300"
-                          : "border-neutral-200 bg-white text-neutral-800 shadow-sm hover:-translate-y-0.5 hover:border-neutral-400"
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setExpandedPatientId(expanded ? null : p.id)}
-                      className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 p-3 text-left"
+              ) : (
+                stackPatients.map((p) => {
+                  const expanded = expandedPatientId === p.id;
+                  const wc =
+                    p.wait_category || waitCategoryFromEsi(p.esi_score);
+                  const sidebarColor = getEsiSidebarColor(p.esi_score);
+                  return (
+                    <div
+                      key={p.id}
+                      className={`rounded-lg border border-neutral-200 transition ${sidebarColor} ${
+                        p.esi_score === 1
+                          ? "hover:border-l-red-650"
+                          : p.esi_score === 2
+                            ? "hover:border-l-amber-550"
+                            : "hover:border-l-neutral-450"
+                      } ${
+                        expanded
+                          ? "bg-neutral-50 shadow-md"
+                          : "bg-white shadow-sm hover:-translate-y-0.2 hover:shadow-md hover:bg-neutral-50"
+                      }`}
                     >
-                      <span className="flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold text-neutral-700">
-                        {p.queue_position ?? "—"}
-                      </span>
-                      <span>
-                        <span className="block font-semibold">{p.name || "Unknown"}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          {p.chief_complaint || "—"}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedPatientId(expanded ? null : p.id)
+                        }
+                        className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 p-3 text-left"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold text-neutral-700">
+                          {p.queue_position ?? "—"}
                         </span>
-                      </span>
-                      <span className="text-xs font-semibold text-neutral-700">
-                        ESI {p.esi_score ?? "?"} · {(wc || "").replace("_", " ")}
-                      </span>
-                    </button>
+                        <span>
+                          <span className="block font-semibold">
+                            {p.name || "Unknown"}
+                          </span>
+                          <span
+                            className={`block text-xs font-semibold ${
+                              p.esi_score === 1
+                                ? "text-red-600"
+                                : p.esi_score === 2
+                                  ? "text-amber-600"
+                                  : "text-muted-foreground font-normal"
+                            }`}
+                          >
+                            {p.chief_complaint || "—"}
+                          </span>
+                        </span>
+                        <span className="text-xs font-semibold text-neutral-700">
+                          ESI {p.esi_score ?? "?"} ·{" "}
+                          {(wc || "").replace("_", " ")}
+                        </span>
+                      </button>
 
-                    {expanded && (
-                      <div className="border-t px-3 pb-3 pt-2">
-                        <PatientDetails p={p} onStatus={setStatus} />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                      {expanded && (
+                        <div className="border-t px-3 pb-3 pt-2">
+                          <PatientDetails p={p} onStatus={setStatus} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </section>
         </div>
@@ -186,31 +210,47 @@ export default function StaffDashboard() {
 
 function PatientCard({ p, onStatus, featured = false }) {
   const wc = p.wait_category || waitCategoryFromEsi(p.esi_score);
-  const isEsi1 = p.esi_score === 1;
+  const sidebarColor = getEsiSidebarColor(p.esi_score);
   return (
     <Card
-      className={
-        featured && isEsi1
-          ? "border-red-200 bg-red-50/80 shadow-sm ring-red-200"
-          : featured
-            ? "bg-white/95 shadow-sm"
-            : ""
-      }
+      className={`${sidebarColor} ${
+        featured
+          ? "bg-neutral-50 shadow-lg border-2 ring-2 ring-neutral-900/10"
+          : ""
+      }`}
     >
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <CardTitle className={featured ? "text-2xl" : "text-base"}>
-              #{p.queue_position ?? "—"} · {p.name || "Unknown"}
+          <div className="flex-1">
+            <CardTitle
+              className={
+                featured ? "text-3xl font-bold" : "text-lg font-semibold"
+              }
+            >
+              {p.name || "Unknown"}
             </CardTitle>
-            <CardDescription className={featured ? "text-base" : ""}>
-              {p.chief_complaint || "—"}
-            </CardDescription>
+            <div
+              className={`${
+                featured
+                  ? `text-lg font-semibold mt-2 ${
+                      p.esi_score === 1
+                        ? "text-red-600"
+                        : p.esi_score === 2
+                          ? "text-amber-600"
+                          : "text-neutral-900"
+                    }`
+                  : "text-xs text-muted-foreground mt-1"
+              }`}
+            >
+              #{p.queue_position ?? "—"} · {p.chief_complaint || "—"}
+            </div>
           </div>
           <EsiBadge esi={p.esi_score} wc={wc} />
         </div>
       </CardHeader>
-      <CardContent className={`flex flex-col gap-3 ${featured ? "text-base" : "text-sm"}`}>
+      <CardContent
+        className={`flex flex-col gap-3 ${featured ? "text-base" : "text-sm"}`}
+      >
         <PatientDetails p={p} onStatus={onStatus} />
       </CardContent>
     </Card>
@@ -218,7 +258,7 @@ function PatientCard({ p, onStatus, featured = false }) {
 }
 
 function PatientDetails({ p, onStatus }) {
-  const [soap, setSoap] = useState(null);       // null | string | "error"
+  const [soap, setSoap] = useState(null); // null | string | "error"
   const [soapLoading, setSoapLoading] = useState(false);
   const [ttsState, setTtsState] = useState("idle"); // idle | loading | playing | error
   const audioRef = useRef(null);
@@ -233,7 +273,8 @@ function PatientDetails({ p, onStatus }) {
         body: JSON.stringify({ patient_id: p.id }),
       });
       const data = await res.json();
-      if (!data.ok) throw new Error(data.errors?.[0] ?? "Failed to generate note");
+      if (!data.ok)
+        throw new Error(data.errors?.[0] ?? "Failed to generate note");
       setSoap(data.report);
     } catch (err) {
       console.error("[soap] error:", err);
@@ -265,8 +306,14 @@ function PatientDetails({ p, onStatus }) {
       const audio = new Audio(url);
       audioRef.current = audio;
       setTtsState("playing");
-      audio.onended = () => { setTtsState("idle"); URL.revokeObjectURL(url); };
-      audio.onerror = () => { setTtsState("error"); URL.revokeObjectURL(url); };
+      audio.onended = () => {
+        setTtsState("idle");
+        URL.revokeObjectURL(url);
+      };
+      audio.onerror = () => {
+        setTtsState("error");
+        URL.revokeObjectURL(url);
+      };
       audio.play();
     } catch (err) {
       console.error("[tts] error:", err);
@@ -275,66 +322,118 @@ function PatientDetails({ p, onStatus }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 text-sm">
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-muted-foreground">
-        <div>Arrival</div>
-        <div className="text-foreground">{formatArrivalTime(p.arrival_time)}</div>
-        <div>Pain</div>
-        <div className="text-foreground">{p.pain_level ?? "—"}/10</div>
-        <div>Symptoms</div>
-        <div className="text-foreground">{p.symptoms || "—"}</div>
-        <div>Red flags</div>
-        <div className="text-foreground">{p.red_flags || "—"}</div>
-        <div>Rationale</div>
-        <div className="text-foreground">{p.clinical_rationale || "—"}</div>
-        <div>Status</div>
-        <div className="text-foreground">{p.status}</div>
+    <div className="flex flex-col gap-4 text-sm">
+      {/* --- Vitals Row: Arrival, Pain, Status --- */}
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <div className="text-xs font-medium text-neutral-500">Arrival</div>
+          <div className="font-medium text-foreground">
+            {formatArrivalTime(p.arrival_time)}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs font-medium text-neutral-500">Pain</div>
+          <div className="font-medium text-foreground">
+            {p.pain_level ?? "—"}/10
+          </div>
+        </div>
+        <div>
+          <div className="text-xs font-medium text-neutral-500">Status</div>
+          <div className="font-medium text-foreground">{p.status}</div>
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 pt-1">
-        {STATUSES.filter((s) => s !== p.status).map((s) => (
-          <Button key={s} size="sm" variant="outline" onClick={() => onStatus(p.id, s)}>
-            {labelFor(s)}
-          </Button>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-        <Button size="sm" variant="outline" disabled={soapLoading} onClick={fetchSoap}>
-          {soapLoading ? "Generating…" : soap && soap !== "error" ? "Regenerate SOAP" : "SOAP note"}
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={ttsState === "loading"}
-          onClick={playConfirmation}
-        >
-          {ttsState === "loading" ? "Loading audio…" :
-           ttsState === "playing" ? "Stop audio" :
-           "▶ Play confirmation"}
-        </Button>
-        {ttsState === "error" && (
-          <span className="text-xs text-destructive">Audio unavailable</span>
-        )}
-      </div>
-
-      {soap && soap !== "error" && (
-        <div className="rounded-lg border bg-neutral-50 p-3 text-xs leading-relaxed whitespace-pre-wrap text-neutral-700">
-          {soap}
+      {/* --- Optional fields: only show if data exists --- */}
+      {(p.symptoms || p.red_flags) && (
+        <div className="grid grid-cols-2 gap-4">
+          {p.symptoms && (
+            <div>
+              <div className="text-xs font-medium text-neutral-500">
+                Symptoms
+              </div>
+              <div className="font-medium text-foreground">{p.symptoms}</div>
+            </div>
+          )}
+          {p.red_flags && (
+            <div>
+              <div className="text-xs font-medium text-neutral-500">
+                Red flags
+              </div>
+              <div className="font-medium text-foreground">{p.red_flags}</div>
+            </div>
+          )}
         </div>
       )}
-      {soap === "error" && (
-        <p className="text-xs text-destructive">Failed to generate SOAP note.</p>
+
+      {/* --- Reasoning Box: highlight the triage logic --- */}
+      {p.clinical_rationale && (
+        <div
+          className={`rounded-lg p-3 ${
+            p.esi_score === 1
+              ? "bg-amber-50 border border-amber-200"
+              : "bg-neutral-50 border border-neutral-200"
+          }`}
+        >
+          <div
+            className={`text-xs font-medium mb-1 ${
+              p.esi_score === 1 ? "text-amber-900" : "text-neutral-700"
+            }`}
+          >
+            Reasoning
+          </div>
+          <div
+            className={`text-sm ${
+              p.esi_score === 1 ? "text-amber-900" : "text-neutral-700"
+            }`}
+          >
+            {p.clinical_rationale}
+          </div>
+        </div>
       )}
+
+      <div className="flex flex-wrap gap-2 pt-1">
+        {STATUSES.filter((s) => s !== p.status).map((s) => {
+          const isStart = s === "in_progress";
+          return (
+            <Button
+              key={s}
+              size="sm"
+              variant={isStart ? "default" : "outline"}
+              className={isStart ? "bg-neutral-900 hover:bg-neutral-800" : ""}
+              onClick={() => onStatus(p.id, s)}
+            >
+              {labelFor(s)}
+            </Button>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 function EsiBadge({ esi, wc }) {
+  if (esi === 1) {
+    return (
+      <div className="flex flex-col items-center gap-0 text-center">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600">
+          ESI
+        </span>
+        <span className="text-5xl font-black text-red-600 leading-none">1</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-red-600 mt-0.5">
+          Immediate
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-end gap-0.5 text-right">
-      <span className="text-xs font-semibold text-foreground">ESI {esi ?? "?"}</span>
-      <span className="text-xs text-muted-foreground">{(wc || "").replace("_", " ")}</span>
+      <span className="text-xs font-semibold text-foreground">
+        ESI {esi ?? "?"}
+      </span>
+      <span className="text-xs text-muted-foreground">
+        {(wc || "").replace("_", " ")}
+      </span>
     </div>
   );
 }
@@ -347,7 +446,25 @@ function labelFor(status) {
 }
 
 function waitCategoryFromEsi(esi) {
-  return { 1: "immediate", 2: "priority", 3: "urgent", 4: "standard", 5: "non_urgent" }[esi] || "";
+  return (
+    {
+      1: "immediate",
+      2: "priority",
+      3: "urgent",
+      4: "standard",
+      5: "non_urgent",
+    }[esi] || ""
+  );
+}
+
+/**
+ * Get the ESI color class for the left sidebar indicator
+ * ESI 1: Bold Red, ESI 2: Amber/Orange, ESI 3-5: Neutral Grey
+ */
+function getEsiSidebarColor(esi) {
+  if (esi === 1) return "border-l-4 border-l-red-600";
+  if (esi === 2) return "border-l-4 border-l-amber-500";
+  return "border-l-4 border-l-neutral-400";
 }
 
 function formatArrivalTime(value) {
