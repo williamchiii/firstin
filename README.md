@@ -1,26 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# FirstIn
+
+AI-powered emergency triage management — built at HackaBull VII.
+
+Patients check in, describe their symptoms, and receive an instant ESI triage score. Staff see a live priority queue and can act on each case from a dedicated dashboard.
+
+## Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router, JavaScript) |
+| Styling | Tailwind v4 + shadcn/ui |
+| Database & Auth | Supabase |
+| AI triage | Google Gemini API |
+| Text-to-speech | ElevenLabs API |
+| Deploy | Vercel |
 
 ## Getting Started
 
+### Prerequisites
+
+- Node.js 20+
+- A [Supabase](https://supabase.com) project
+- A [Google Gemini](https://aistudio.google.com) API key
+- An [ElevenLabs](https://elevenlabs.io) API key (optional — set `ELEVENLABS_MOCK_MODE=true` to skip)
+
+### Setup
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Create your local env file
+cp .env.example .env.local
+# Fill in your keys in .env.local
+
+# 3. Start the dev server
 npm run dev
+```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+### Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous (public) key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role key (server only) |
+| `GEMINI_API_KEY` | Google Gemini API key |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key |
+| `STAFF_ALLOWED_EMAILS` | Comma-separated emails permitted to access `/staff` |
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/
+│   ├── api/          # API routes (intake, triage, queue, patients…)
+│   ├── patient/      # Patient check-in flow
+│   └── staff/        # Staff dashboard
+├── components/       # Shared UI components
+└── lib/              # DB helpers, AI clients, triage logic
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run dev      # Start development server
+npm run build    # Production build
+npm run lint     # Run ESLint
+npm run test     # Run Vitest tests
+```
 
-## Deploy on Vercel
+## Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Deploy to [Vercel](https://vercel.com) in one click — set the same environment variables in your project settings and you're done.

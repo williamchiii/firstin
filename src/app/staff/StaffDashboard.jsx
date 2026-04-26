@@ -112,7 +112,7 @@ export default function StaffDashboard() {
                   Select a card to expand details
                 </div>
               </div>
-              <span className="rounded-full bg-neutral-100 px-2 py-1 text-xs font-semibold text-neutral-600">
+              <span className="text-xs font-semibold text-neutral-600">
                 {stackPatients.length} waiting
               </span>
             </div>
@@ -153,7 +153,7 @@ export default function StaffDashboard() {
                           {p.chief_complaint || "—"}
                         </span>
                       </span>
-                      <span className="rounded-md bg-neutral-100 px-2 py-1 text-xs font-semibold text-neutral-700">
+                      <span className="text-xs font-semibold text-neutral-700">
                         ESI {p.esi_score ?? "?"} · {(wc || "").replace("_", " ")}
                       </span>
                     </button>
@@ -232,15 +232,9 @@ function PatientDetails({ p, onStatus }) {
 }
 
 function EsiBadge({ esi, wc }) {
-  const color =
-    esi === 1 ? "bg-red-600 text-white"
-    : esi === 2 ? "bg-orange-500 text-white"
-    : esi === 3 ? "bg-amber-400 text-black"
-    : esi === 4 ? "bg-emerald-500 text-white"
-    : "bg-zinc-300 text-black";
   return (
-    <div className="flex flex-col items-end gap-0.5">
-      <span className={`rounded-md px-2 py-0.5 text-xs font-semibold ${color}`}>
+    <div className="flex flex-col items-end gap-0.5 text-right">
+      <span className="text-xs font-semibold text-foreground">
         ESI {esi ?? "?"}
       </span>
       <span className="text-xs text-muted-foreground">{(wc || "").replace("_", " ")}</span>
