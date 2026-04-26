@@ -14,6 +14,64 @@ function toIsoDate(raw) {
   return d.toISOString().split("T")[0];
 }
 
+const SYMPTOM_KEYWORDS = [
+  "pain", "fever", "cough", "headache", "nausea", "vomit", "dizziness",
+  "dizzy", "bleed", "breathing", "breath", "chest", "swelling", "rash",
+  "fatigue", "tired", "weak", "sore", "throat", "stomach", "back", "arm",
+  "leg", "head", "ear", "eye", "nose", "skin", "heart", "pounding", "racing",
+];
+
+const RED_FLAG_KEYWORDS = [
+  "chest pain", "can't breathe", "cannot breathe", "difficulty breathing",
+  "unconscious", "unresponsive", "severe bleeding", "stroke", "seizure",
+  "heart attack", "allergic reaction", "anaphylaxis", "overdose",
+];
+
+/**
+ * Always-available deterministic extractor — never throws, merges with Gemini output.
+ * Gemini values win when non-empty; this fills in the gaps.
+ */
+function extractFromTranscript(transcript) {
+  const patientLines = [];
+  for (const line of transcript.split("\n")) {
+    const m = line.match(/^Patient:\s*(.+)/i);
+    if (m && m[1].trim().length >= 3) patientLines.push(m[1].trim());
+  }
+
+  // chiefComplaint — first substantive patient lines joined
+  const meaningfulLines = patientLines.filter((l) => l.length >= 10);
+  const chiefComplaint = meaningfulLines.slice(0, 2).join(". ") || patientLines.slice(0, 2).join(". ") || "";
+
+  // symptoms — keyword scan across all patient lines
+  const fullPatientText = patientLines.join(" ").toLowerCase();
+  const symptoms = SYMPTOM_KEYWORDS.filter((kw) => fullPatientText.includes(kw));
+
+  // painLevel — "X out of 10" or "X/10"
+  let painLevel = null;
+  const painMatch = transcript.match(/\b([0-9]|10)\s*(?:out of|\/)\s*10\b/i);
+  if (painMatch) painLevel = parseInt(painMatch[1], 10);
+
+  // redFlags — keyword scan on full transcript
+  const lower = transcript.toLowerCase();
+  const redFlags = RED_FLAG_KEYWORDS.filter((kw) => lower.includes(kw));
+
+  // demographics.name — agent addressing patient
+  let name = null;
+  const nameMatch = transcript.match(
+    /(?:(?:Mr|Ms|Mrs|Dr)\.?\s+)([\w][A-Za-z\s]{1,25}?)(?:\.|,|!|\?|\n)/,
+  ) || transcript.match(/(?:Thank you,?\s+)([\w][A-Za-z\s]{2,25}?)(?:\.|,|!|\n)/i);
+  if (nameMatch) name = nameMatch[1].trim();
+
+  // dob — various date patterns spoken aloud
+  let dob = null;
+  const dobMatch = transcript.match(
+    /(?:born|birthday|date of birth)[^\d]*(\w+ \d{1,2}(?:st|nd|rd|th)?,?\s*\d{4})/i,
+  );
+  if (dobMatch) dob = dobMatch[1];
+
+  return { chiefComplaint, symptoms, painLevel, redFlags, demographics: name || dob ? { name, dob, age: null } : null };
+}
+
 export async function POST(req) {
   const parsed = await readJsonBody(req);
   if (!parsed.ok) return jsonError(parsed.error, 400);
@@ -24,53 +82,60 @@ export async function POST(req) {
   }
 
   console.log("[finalize] transcript length:", transcript.length, "chars");
-  console.log("[finalize] transcript preview:\n", transcript.slice(0, 400));
+  console.log("[finalize] transcript preview:\n", transcript.slice(0, 500));
 
-  // --- Parse transcript with Gemini (fallback to minimal data on failure) ---
-  let parsedData;
+  // --- Deterministic extraction (always runs, never throws) ---
+  const regexData = extractFromTranscript(transcript);
+  console.log("[finalize] regex extracted:", JSON.stringify(regexData));
+
+  // --- Parse transcript with Gemini (best-effort, merged with regex) ---
+  let geminiData = null;
   try {
-    parsedData = await parseVoiceTranscript(transcript);
-    console.log("[finalize] Gemini parsed:", JSON.stringify(parsedData));
+    geminiData = await parseVoiceTranscript(transcript);
+    console.log("[finalize] Gemini parsed:", JSON.stringify(geminiData));
   } catch (err) {
-    console.error("[finalize] parseVoiceTranscript failed, using fallback:", err);
-    parsedData = {
-      chiefComplaint: "Unknown — brief intake",
-      symptoms: [],
-      painLevel: null,
-      duration: null,
-      redFlags: [],
-      demographics: null,
-      emailMentioned: null,
+    console.error("[finalize] parseVoiceTranscript failed, using regex only:", err.message);
+  }
+
+  // Merge — Gemini wins when non-empty, regex fills gaps
+  const chiefComplaint =
+    geminiData?.chiefComplaint?.trim() ||
+    regexData.chiefComplaint ||
+    "Unknown — brief intake";
+
+  const symptoms = (() => {
+    const g = Array.isArray(geminiData?.symptoms) ? geminiData.symptoms.filter(Boolean) : [];
+    const r = regexData.symptoms ?? [];
+    return g.length > 0 ? g : r;
+  })();
+
+  const painLevel = geminiData?.painLevel ?? regexData.painLevel ?? null;
+
+  const redFlags = (() => {
+    const g = Array.isArray(geminiData?.redFlags) ? geminiData.redFlags.filter(Boolean) : [];
+    const r = regexData.redFlags ?? [];
+    return g.length > 0 ? g : r;
+  })();
+
+  const demographics = (() => {
+    const g = geminiData?.demographics;
+    const r = regexData.demographics;
+    if (!g && !r) return null;
+    return {
+      name: g?.name?.trim() || r?.name || null,
+      dob: g?.dob || r?.dob || null,
+      age: g?.age ?? r?.age ?? null,
     };
-  }
+  })();
 
-  let { chiefComplaint, symptoms, painLevel, redFlags, demographics } = parsedData;
-
-  // Regex safety net — fill blanks Gemini missed
-  if (!chiefComplaint?.trim()) {
-    // Look for what the patient said after common intake questions
-    const ccMatch = transcript.match(/Patient:\s*(.{5,120})/i);
-    chiefComplaint = ccMatch ? ccMatch[1].replace(/[.!?].*$/, "").trim() : "";
-  }
-  if (!demographics?.name) {
-    const nameMatch = transcript.match(/(?:Mr\.|Ms\.|Mrs\.|Thank you,?\s+)([\w][\w\s]{1,30}?)(?:\.|,|!|\n)/i);
-    if (nameMatch) {
-      demographics = { ...(demographics ?? {}), name: nameMatch[1].trim() };
-    }
-  }
-  if (painLevel === null) {
-    const painMatch = transcript.match(/\b([0-9]|10)\s*(?:out of|\/)\s*10\b/i);
-    if (painMatch) painLevel = parseInt(painMatch[1], 10);
-  }
-
-  const resolvedComplaint = chiefComplaint?.trim() || "Unknown — brief intake";
+  console.log("[finalize] merged data:", JSON.stringify({ chiefComplaint, symptoms, painLevel, redFlags, demographics }));
 
   // --- Score patient (AI with rule-based fallback) ---
   const normalized = {
     name: demographics?.name?.trim() || "Unknown",
     language: "en",
-    chief_complaint: resolvedComplaint,
-    symptoms: Array.isArray(symptoms) ? symptoms.join(", ") : (symptoms ?? ""),
+    chief_complaint: chiefComplaint,
+    symptoms: symptoms.join(", "),
     pain_level: typeof painLevel === "number" ? Math.round(painLevel) : null,
     patient_dob: toIsoDate(demographics?.dob),
   };
@@ -92,11 +157,11 @@ export async function POST(req) {
       name: normalized.name,
       language: normalized.language,
       patient_dob: normalized.patient_dob,
-      chief_complaint: resolvedComplaint,
-      symptoms: normalized.symptoms,
+      chief_complaint: chiefComplaint,
+      symptoms: symptoms.length > 0 ? JSON.stringify(symptoms) : normalized.symptoms,
       pain_level: normalized.pain_level,
       esi_score: scoring.esi_score,
-      red_flags: scoring.red_flags,
+      red_flags: redFlags.length > 0 ? JSON.stringify(redFlags) : null,
       clinical_rationale: scoring.clinical_rationale,
       status: "waiting",
       arrival_time: new Date().toISOString(),
@@ -110,8 +175,7 @@ export async function POST(req) {
     return jsonError(`Failed to save patient: ${patientError.message}`, 500);
   }
 
-  // Derive real queue position from the patients table — same source as /api/queue,
-  // so the confirmation screen and the status page always show the same number.
+  // Derive real queue position from the patients table — same source as /api/queue
   const { data: queueRows } = await supabase
     .from("patients")
     .select("id")
@@ -121,18 +185,18 @@ export async function POST(req) {
 
   const queuePosition = Math.max(1, (queueRows ?? []).findIndex((r) => r.id === patient.id) + 1);
 
-  // --- Insert triage case (non-fatal — patient is already queued via patients row) ---
+  // --- Insert triage case (non-fatal) ---
   const { data: triageCase, error: caseError } = await supabase
     .from("triage_cases")
     .insert({
       patient_id: patient.id,
       transcript,
-      parsed_json: parsedData,
+      parsed_json: { chiefComplaint, symptoms, painLevel, redFlags, demographics },
       esi_score: scoring.esi_score,
-      chief_complaint: resolvedComplaint,
-      symptoms: Array.isArray(symptoms) ? symptoms : [],
+      chief_complaint: chiefComplaint,
+      symptoms,
       pain_level: painLevel ?? null,
-      red_flags: Array.isArray(redFlags) ? redFlags : [],
+      red_flags: redFlags,
       clinical_rationale: scoring.clinical_rationale,
       status: "waiting",
       queue_position: queuePosition,

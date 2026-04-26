@@ -72,7 +72,14 @@ Return ONLY a JSON object in this exact shape — no markdown, no explanation:
 
   // Strip markdown code fences if present
   const jsonStr = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-  const parsed = JSON.parse(jsonStr);
+  console.log("[gemini] parseVoiceTranscript raw response:", jsonStr.slice(0, 500));
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch (parseErr) {
+    console.error("[gemini] JSON.parse failed:", parseErr.message, "\nRaw was:", jsonStr.slice(0, 300));
+    throw parseErr;
+  }
   return {
     chiefComplaint: parsed.chiefComplaint ?? "",
     symptoms: Array.isArray(parsed.symptoms) ? parsed.symptoms : [],
