@@ -27,7 +27,7 @@ function CredentialsModal({ onClose }) {
         <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-4 flex flex-col gap-3">
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Name</span>
-            <span className="font-medium text-gray-900">Marcus Reed</span>
+            <span className="font-medium text-gray-900">Ismael Romero</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Email</span>
@@ -155,12 +155,7 @@ function VoiceIntake() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
-  // --- Show credentials modal 2s after confirmation appears ---
-  useEffect(() => {
-    if (phase !== "done") return;
-    const t = setTimeout(() => setShowModal(true), 2000);
-    return () => clearTimeout(t);
-  }, [phase]);
+  // Modal is triggered by onDone from EmailCaptureModal (send or skip)
 
   // --- Start session ---
   const handleStart = useCallback(async () => {
@@ -221,6 +216,7 @@ function VoiceIntake() {
               caseId={finalizeResult.caseId}
               patientId={finalizeResult.patientId}
               queuePosition={finalizeResult.queuePosition}
+              onDone={() => setShowModal(true)}
             />
             <div className="w-full flex flex-col gap-2">
               <Link

@@ -102,7 +102,7 @@ export default async function PatientDashboardPage() {
         </Link>
         <span className="text-center text-xl font-medium text-neutral-500 sm:text-2xl">
           Welcome back,{" "}
-          <span className="text-neutral-900">{patient.name}</span>
+          <span className="text-neutral-900">Ismael</span>
         </span>
         <div className="flex justify-end">
           <SignOutButton />
