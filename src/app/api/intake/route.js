@@ -67,6 +67,20 @@ export async function POST(req) {
     return jsonError(insertError.message, 500);
   }
 
+  // --- auth account creation ---
+  try {
+    const tempPassword = Math.random().toString(36).slice(-8) + "A1";
+    const { error: authError } = await supabase.auth.admin.createUser({
+      email: parsed.body.email,
+      password: tempPassword,
+      email_confirm: true,
+      user_metadata: { patient_id: insertedPatient.id, name: insertedPatient.name },
+    });
+    if (authError) console.error("[intake] auth createUser failed:", authError);
+  } catch (err) {
+    console.error("[intake] auth createUser threw:", err);
+  }
+
   return jsonOk(
     {
       patient: insertedPatient,
