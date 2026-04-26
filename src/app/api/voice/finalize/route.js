@@ -92,7 +92,6 @@ export async function POST(req) {
       red_flags: scoring.red_flags,
       clinical_rationale: scoring.clinical_rationale,
       status: "waiting",
-      queue_position: queuePosition,
       ...(email ? { email } : {}),
     })
     .select("id")
