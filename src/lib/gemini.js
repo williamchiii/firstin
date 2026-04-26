@@ -46,8 +46,8 @@ Rules:
 - painLevel: numeric 0-10 if mentioned, otherwise null
 - duration: how long symptoms have lasted, if mentioned, otherwise null
 - redFlags: array of life-threatening indicators (chest pain, difficulty breathing, altered consciousness, severe bleeding, etc.). Empty array if none.
-- demographics.name: the patient's name — extract even if only the agent says it (e.g. "Thank you, Mr. Smith" → "Mr. Smith")
-- demographics.dob: date of birth if mentioned, return as-is (e.g. "February 25th, 1990")
+- demographics.name: the patient's name ONLY — first and last name, nothing else. Extract even if only the agent says it (e.g. "Thank you, Mr. Smith" → "Mr. Smith"). Do NOT include date of birth or any other info in this field.
+- demographics.dob: date of birth if mentioned, return as-is (e.g. "February 25th, 1990"). This is a SEPARATE field from name.
 - demographics.age: numeric age if mentioned
 - emailMentioned: any email address the patient provides, otherwise null
 

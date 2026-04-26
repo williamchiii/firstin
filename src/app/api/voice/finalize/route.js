@@ -27,6 +27,9 @@ const RED_FLAG_KEYWORDS = [
   "heart attack", "allergic reaction", "anaphylaxis", "overdose",
 ];
 
+const DATE_RE = /\b(?:january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}(?:st|nd|rd|th)?[,\s]+\d{4}|\d{4})\b/i;
+const NAME_RE = /^[A-Z][a-z]+(?:\s[A-Z][a-z]+){0,2}\.?$/; // "First Last" or "First Last Jr."
+
 /**
  * Always-available deterministic extractor — never throws, merges with Gemini output.
  * Gemini values win when non-empty; this fills in the gaps.
@@ -35,16 +38,26 @@ function extractFromTranscript(transcript) {
   const patientLines = [];
   for (const line of transcript.split("\n")) {
     const m = line.match(/^Patient:\s*(.+)/i);
-    if (m && m[1].trim().length >= 3) patientLines.push(m[1].trim());
+    if (m && m[1].trim().length >= 2) patientLines.push(m[1].trim());
   }
 
-  // chiefComplaint — first substantive patient lines joined
-  const meaningfulLines = patientLines.filter((l) => l.length >= 10);
-  const chiefComplaint = meaningfulLines.slice(0, 2).join(". ") || patientLines.slice(0, 2).join(". ") || "";
+  // Filter out lines that are just name/DOB answers (short, look like a name or date)
+  const symptomLines = patientLines.filter((l) =>
+    l.length >= 10 &&
+    !DATE_RE.test(l) &&
+    !NAME_RE.test(l),
+  );
 
-  // symptoms — keyword scan across all patient lines
-  const fullPatientText = patientLines.join(" ").toLowerCase();
-  const symptoms = SYMPTOM_KEYWORDS.filter((kw) => fullPatientText.includes(kw));
+  // chiefComplaint — first 1-2 symptom lines
+  const chiefComplaint = symptomLines.slice(0, 2).join(". ") || "";
+
+  // symptoms — keyword scan only over symptom lines (not name/DOB lines)
+  const symptomText = symptomLines.join(" ").toLowerCase();
+  // Deduplicate: remove keywords that are substrings of another matched keyword
+  const matched = SYMPTOM_KEYWORDS.filter((kw) => symptomText.includes(kw));
+  const symptoms = matched.filter(
+    (kw) => !matched.some((other) => other !== kw && other.includes(kw)),
+  );
 
   // painLevel — "X out of 10" or "X/10"
   let painLevel = null;
@@ -55,17 +68,20 @@ function extractFromTranscript(transcript) {
   const lower = transcript.toLowerCase();
   const redFlags = RED_FLAG_KEYWORDS.filter((kw) => lower.includes(kw));
 
-  // demographics.name — agent addressing patient
+  // demographics.name — agent addressing patient by name, take only first 3 words max
   let name = null;
-  const nameMatch = transcript.match(
-    /(?:(?:Mr|Ms|Mrs|Dr)\.?\s+)([\w][A-Za-z\s]{1,25}?)(?:\.|,|!|\?|\n)/,
-  ) || transcript.match(/(?:Thank you,?\s+)([\w][A-Za-z\s]{2,25}?)(?:\.|,|!|\n)/i);
-  if (nameMatch) name = nameMatch[1].trim();
+  const nameMatch =
+    transcript.match(/(?:(?:Mr|Ms|Mrs|Dr)\.?\s+)([\w][A-Za-z]{1,20}(?:\s[A-Za-z]{1,20})?)(?:\.|,|!|\?|\s)/,) ||
+    transcript.match(/(?:Thank you,?\s+)([\w][A-Za-z]{1,20}(?:\s[A-Za-z]{1,20})?)(?:\.|,|!|\n)/i);
+  if (nameMatch) {
+    // Stop at any period/comma and cap at 3 words to avoid pulling in DOB
+    name = nameMatch[1].split(/[.,]/)[0].trim().split(/\s+/).slice(0, 3).join(" ");
+  }
 
-  // dob — various date patterns spoken aloud
+  // dob — look for date after agent asks for it
   let dob = null;
   const dobMatch = transcript.match(
-    /(?:born|birthday|date of birth)[^\d]*(\w+ \d{1,2}(?:st|nd|rd|th)?,?\s*\d{4})/i,
+    /(?:born|birthday|date of birth|birth date)[^\d\w]*(\w+ \d{1,2}(?:st|nd|rd|th)?,?\s*\d{4})/i,
   );
   if (dobMatch) dob = dobMatch[1];
 
