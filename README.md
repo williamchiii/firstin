@@ -1,131 +1,133 @@
 # FirstIn
 
-> **"Because every second decides."**
+FirstIn is a Next.js emergency room pre-triage app. Patients can check in through a text form or a voice intake flow, then staff can review a live queue sorted by Emergency Severity Index (ESI) priority.
 
-FirstIn is an AI-powered emergency room pre-triage system built at HackaBull VII at the University of South Florida. Patients check in at a kiosk or on their phone, describe their symptoms in their native language, and are scored by a hybrid rule-based + Gemini AI engine in seconds. The nurse dashboard reorders the patient queue in real time — the sickest patient is always first.
-
-Built to address the language barriers that lead to misclassification and worse outcomes for non-English speaking patients in emergency care — with support for Spanish, Haitian Creole, Portuguese, and Vietnamese.
-
----
-
-## The Problem
-
-| Stat | Reality |
-|---|---|
-| 2.5 hours | Average ER wait time in the US |
-| 30% | ER visits that are non-urgent, delaying critical patients |
-| 10–15 min | Lost per patient at manual front desk intake |
-| 400,000+ | Spanish speakers in Hillsborough County alone |
-
----
-
-## How It Works
-
-1. **Patient arrives** — uses a hospital kiosk or their own phone
-2. **Selects language** — English, Spanish, Haitian Creole, Portuguese, or Vietnamese
-3. **Checks in** — via text form or AI voice conversation (ElevenLabs Conversational AI)
-4. **Dynamic follow-up questions** — Gemini generates clinical follow-up questions tailored to the chief complaint
-5. **Hybrid triage scoring** — deterministic rule-based scoring runs first; Gemini (`gemini-2.5-flash`) validates and refines the ESI score; the more conservative score always wins
-6. **Queue reorders live** — nurse dashboard updates in real time via Supabase Realtime
-7. **Patient receives audio confirmation** — ElevenLabs TTS speaks the wait category back to them in their language
-8. **Patient tracks their status** — live queue position visible at `/patient/status`
-9. **Nurse acts** — full triage card, red flag alerts, SOAP note generation, and prescription logging from a single dashboard
-
----
-
-## ESI Scoring System
-
-FirstIn uses a hybrid scoring approach — deterministic clinical rules run first, then a Gemini AI call validates and can override with a more conservative score.
-
-| ESI | Label | Description |
-|---|---|---|
-| 1 | Immediate | Life-threatening — bypasses AI entirely |
-| 2 | Emergent | High risk, could deteriorate fast |
-| 3 | Urgent | Needs treatment, currently stable |
-| 4 | Less Urgent | One resource needed |
-| 5 | Non-Urgent | Could be seen at urgent care |
-
-**Safety rules that cannot be overridden by AI:**
-- ESI-1 keywords (chest pain, stroke, seizure, severe bleeding, unconscious) trigger an immediate hard-stop before any AI call
-- ESI scores are server-side only — patients never see their score
-- Nurse manual override wins over AI at all times
-- If AI scoring fails, the patient still enters the queue with nurse review flagged
-
----
-
-## Stack
-
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 16 (App Router, JavaScript) |
-| Styling | Tailwind v4 + shadcn/ui |
-| Database + Realtime | Supabase (PostgreSQL + Supabase Realtime) |
-| AI triage scoring | Google Gemini API (`gemini-2.5-flash`) |
-| Follow-up questions & SOAP notes | Google Gemini API (`gemini-2.0-flash`) |
-| Voice intake | ElevenLabs Conversational AI |
-| Multilingual TTS confirmation | ElevenLabs API (`eleven_multilingual_v2`) |
-| Triage confirmation email | Resend |
-| Deploy | Vercel |
-
----
+The app was built for HackaBull and uses Supabase for patient data/auth, Gemini for clinical parsing and scoring, ElevenLabs for voice intake and audio, and Resend for confirmation emails.
 
 ## Features
 
-- **Text or voice intake** — patients can fill in a form or speak to an AI voice agent
-- **Multilingual support** — English, Spanish, Haitian Creole, Portuguese, Vietnamese
-- **AI-powered follow-up questions** — Gemini generates dynamic clinical questions based on the chief complaint
-- **Hybrid ESI scoring** — rule-based scoring with Gemini AI validation (most conservative score wins)
-- **Wound photo analysis** — optional photo upload analyzed by Gemini for clinical description
-- **Live staff dashboard** — real-time priority queue via Supabase Realtime
-- **SOAP note generation** — one-click AI-generated clinical notes for each patient
-- **Prescription logging** — authorized staff can issue and log prescriptions in the platform
-- **Patient status tracking** — patients see their live queue position at `/patient/status`
-- **Triage confirmation email** — Resend delivers a confirmation with ESI level and queue position
-- **Multilingual audio confirmation** — ElevenLabs TTS reads out the wait category in the patient's language
+- Patient-facing landing page and check-in flow
+- Text intake form for demographics, symptoms, chief complaint, pain level, and language
+- Voice intake flow powered by ElevenLabs Conversational AI
+- Gemini transcript parsing, SOAP note generation, and ESI scoring
+- Rule-based ESI fallback when AI scoring is unavailable
+- Staff-only dashboard protected by Supabase Auth and an email allowlist
+- Live queue updates through Supabase Realtime, with fallback polling
+- Patient dashboard/status pages
+- Confirmation emails through Resend
+- Supabase schema for patients, triage cases, staff, and case notes
+- Vitest coverage for triage and queue behavior
 
----
+## Tech Stack
+
+- Next.js 16 App Router
+- React 19
+- Tailwind CSS 4
+- Supabase Postgres, Auth, SSR, and Realtime
+- Google Gemini API
+- ElevenLabs Conversational AI and text-to-speech
+- Resend
+- Vitest
+
+## Project Structure
+
+```text
+src/app/                  Next.js routes and API routes
+src/app/api/intake        Text intake endpoint
+src/app/api/voice         Voice token/finalization endpoints
+src/app/api/queue         Staff queue endpoint
+src/app/staff             Protected staff dashboard
+src/app/patient           Patient login, dashboard, and status pages
+src/lib                   Supabase, Gemini, ElevenLabs, triage, and validation helpers
+src/components            Shared UI components
+supabase/schema.sql       Database schema and RLS policies
+tests                     Vitest tests
+```
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 20+
-- A [Supabase](https://supabase.com) project
-- A [Google Gemini](https://aistudio.google.com) API key
-- An [ElevenLabs](https://elevenlabs.io) API key and Conversational AI agent
-- A [Resend](https://resend.com) account (for triage confirmation emails)
+- Node.js 20 or newer
+- A Supabase project
+- A Gemini API key
+- An ElevenLabs API key and Conversational AI agent
+- A Resend API key
 
-### Setup
+### Install
 
 ```bash
-# 1. Install dependencies
 npm install
-
-# 2. Create your local env file
 cp .env.example .env.local
-# Fill in your keys in .env.local
-
-# 3. Start the dev server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000).
 
-### Environment Variables
+### Database
 
-| Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key — server only, never expose to client |
-| `GEMINI_API_KEY` | Google Gemini API key |
-| `ELEVENLABS_API_KEY` | ElevenLabs API key (TTS + voice intake) |
-| `ELEVENLABS_AGENT_ID` | ElevenLabs Conversational AI agent ID (server-side) |
-| `NEXT_PUBLIC_ELEVENLABS_AGENT_ID` | ElevenLabs agent ID (client-side, for the voice widget) |
-| `ELEVENLABS_MOCK_MODE` | Set to `true` to skip ElevenLabs TTS calls during local dev |
-| `RESEND_API_KEY` | Resend API key for triage confirmation emails |
-| `EMAIL_FROM` | Sender address for confirmation emails (default: `onboarding@resend.dev`) |
-| `STAFF_ALLOWED_EMAILS` | Comma-separated emails permitted to access `/staff` |
+Run `supabase/schema.sql` in the Supabase SQL editor before using the app. The schema creates:
 
----
+- `patients`
+- `triage_cases`
+- `staff`
+- `case_notes`
 
+It also enables row-level security and adds policies for patient and staff access.
+
+## Environment Variables
+
+Copy `.env.example` to `.env.local` and fill in the values:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
+ELEVENLABS_AGENT_ID=your_agent_id_here
+NEXT_PUBLIC_ELEVENLABS_AGENT_ID=your_agent_id_here
+RESEND_API_KEY=your_resend_api_key_here
+EMAIL_FROM=triage@firstin.local
+STAFF_ALLOWED_EMAILS=
+```
+
+Useful optional variables used by the code:
+
+```bash
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+GEMINI_MODEL=gemini-2.5-flash
+ELEVENLABS_MOCK_MODE=true
+```
+
+`STAFF_ALLOWED_EMAILS` should be a comma-separated list of staff emails allowed to access `/staff`.
+
+## Scripts
+
+```bash
+npm run dev          # Start the development server
+npm run build        # Build for production
+npm run start        # Start the production server
+npm run lint         # Run ESLint
+npm run test         # Run Vitest once
+npm run test:watch   # Run Vitest in watch mode
+```
+
+## Main Flows
+
+1. A patient starts at `/` and clicks check in.
+2. The patient chooses voice intake or typed intake at `/intake`.
+3. The app validates the intake, scores acuity, and inserts a patient row in Supabase.
+4. `/api/queue` returns patients ordered by `esi_score` and `arrival_time`.
+5. Staff access `/staff`, sign in with Supabase Auth, and manage patient status from the dashboard.
+6. Patients can use the patient pages to view their status and dashboard.
+
+## Testing
+
+Run the test suite with:
+
+```bash
+npm run test
+```
+
+Current tests cover intake validation, rule-based ESI scoring, queue reads, and patient status updates.
