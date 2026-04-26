@@ -1,5 +1,5 @@
 // GET /api/queue
-// returns active patients (waiting or in_progress), sorted by acuity then arrival time
+// returns staff-visible patients, sorted by acuity then arrival time
 //
 // RESPONSE
 //   200 { ok: true, patients: [...] }
@@ -8,13 +8,13 @@
 import { jsonError, jsonOk, methodNotAllowed } from "@/lib/http.js";
 import { supabase } from "@/lib/supabase.js";
 
-const ACTIVE_STATUSES = ["waiting", "in_progress"];
+const QUEUE_STATUSES = ["waiting", "in_progress", "completed"];
 
 export async function GET() {
   const { data, error } = await supabase
     .from("patients")
     .select("*")
-    .in("status", ACTIVE_STATUSES)
+    .in("status", QUEUE_STATUSES)
     .order("esi_score", { ascending: true })
     .order("arrival_time", { ascending: true });
 
