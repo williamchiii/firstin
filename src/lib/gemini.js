@@ -29,28 +29,6 @@ Return only the SOAP note text, no additional commentary.`;
 
 // --- Voice transcript parsing ---
 
-const TRANSCRIPT_SCHEMA = {
-  type: "object",
-  properties: {
-    chiefComplaint: { type: "string" },
-    symptoms: { type: "array", items: { type: "string" } },
-    painLevel: { type: "number", nullable: true },
-    duration: { type: "string", nullable: true },
-    redFlags: { type: "array", items: { type: "string" } },
-    demographics: {
-      type: "object",
-      nullable: true,
-      properties: {
-        age: { type: "number" },
-        dob: { type: "string" },
-        name: { type: "string" },
-      },
-    },
-    emailMentioned: { type: "string", nullable: true },
-  },
-  required: ["chiefComplaint", "symptoms", "redFlags"],
-};
-
 /**
  * Parses a voice conversation transcript into structured triage data.
  * @param {string} transcript - Full conversation transcript.
@@ -63,32 +41,42 @@ Transcript:
 ${transcript}
 
 Rules:
-- chiefComplaint: the patient's primary reason for visiting, summarized clinically (e.g. "high fever and body aches"). Never leave empty if any symptoms or reason were mentioned.
-- symptoms: list each distinct symptom the patient mentions
+- chiefComplaint: the patient's PRIMARY reason for visiting, summarized clinically (e.g. "high fever and body aches"). NEVER leave empty — if any symptom or reason was mentioned, fill it in.
+- symptoms: array of each distinct symptom the patient mentions
 - painLevel: numeric 0-10 if mentioned, otherwise null
-- redFlags: life-threatening indicators (chest pain, difficulty breathing, altered consciousness, severe bleeding, etc.)
-- demographics.name: the patient's name — extract even if only the agent says it (e.g. "Thank you, Mr. Smith" means name is "Mr. Smith")
-- demographics.dob: date of birth if mentioned, return as-is (e.g. "February 25th, 1904")
-- demographics.age: age if mentioned
-- emailMentioned: any email address the patient provides`;
+- duration: how long symptoms have lasted, if mentioned, otherwise null
+- redFlags: array of life-threatening indicators (chest pain, difficulty breathing, altered consciousness, severe bleeding, etc.). Empty array if none.
+- demographics.name: the patient's name — extract even if only the agent says it (e.g. "Thank you, Mr. Smith" → "Mr. Smith")
+- demographics.dob: date of birth if mentioned, return as-is (e.g. "February 25th, 1990")
+- demographics.age: numeric age if mentioned
+- emailMentioned: any email address the patient provides, otherwise null
+
+Return ONLY a JSON object in this exact shape — no markdown, no explanation:
+{
+  "chiefComplaint": "string",
+  "symptoms": ["string"],
+  "painLevel": null,
+  "duration": null,
+  "redFlags": [],
+  "demographics": { "name": "string", "dob": null, "age": null },
+  "emailMentioned": null
+}`;
 
   const response = await ai.models.generateContent({
     model: MODEL,
     contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: TRANSCRIPT_SCHEMA,
-    },
   });
 
-  const raw = response.text;
+  const raw = response.text?.trim();
   if (!raw) throw new Error("Gemini returned empty response for transcript parsing");
 
-  const parsed = JSON.parse(raw);
+  // Strip markdown code fences if present
+  const jsonStr = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  const parsed = JSON.parse(jsonStr);
   return {
     chiefComplaint: parsed.chiefComplaint ?? "",
     symptoms: Array.isArray(parsed.symptoms) ? parsed.symptoms : [],
-    painLevel: parsed.painLevel ?? null,
+    painLevel: typeof parsed.painLevel === "number" ? parsed.painLevel : null,
     duration: parsed.duration ?? null,
     redFlags: Array.isArray(parsed.redFlags) ? parsed.redFlags : [],
     demographics: parsed.demographics ?? null,

@@ -159,6 +159,23 @@ function VoiceIntake() {
               #{finalizeResult.queuePosition}
             </strong>
           </p>
+
+          {/* Demo credentials card */}
+          <div className="w-full rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-left">
+            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Demo — Patient Portal Access</p>
+            <div className="flex flex-col gap-1 text-sm text-blue-900">
+              <div className="flex justify-between"><span className="text-blue-600">Patient</span><span className="font-medium">Marcus Reed</span></div>
+              <div className="flex justify-between"><span className="text-blue-600">Email</span><span className="font-medium">user@firstin.com</span></div>
+              <div className="flex justify-between"><span className="text-blue-600">Password</span><span className="font-mono font-medium">1234</span></div>
+            </div>
+            <Link
+              href="/patient/login"
+              className="mt-3 block text-center rounded-lg bg-blue-700 py-2 text-sm font-medium text-white hover:bg-blue-800 transition-colors"
+            >
+              Open patient portal →
+            </Link>
+          </div>
+
           <EmailCaptureModal
             caseId={finalizeResult.caseId}
             patientId={finalizeResult.patientId}

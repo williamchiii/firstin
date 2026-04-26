@@ -44,7 +44,25 @@ export async function POST(req) {
     };
   }
 
-  const { chiefComplaint, symptoms, painLevel, redFlags, demographics } = parsedData;
+  let { chiefComplaint, symptoms, painLevel, redFlags, demographics } = parsedData;
+
+  // Regex safety net — fill blanks Gemini missed
+  if (!chiefComplaint?.trim()) {
+    // Look for what the patient said after common intake questions
+    const ccMatch = transcript.match(/Patient:\s*(.{5,120})/i);
+    chiefComplaint = ccMatch ? ccMatch[1].replace(/[.!?].*$/, "").trim() : "";
+  }
+  if (!demographics?.name) {
+    const nameMatch = transcript.match(/(?:Mr\.|Ms\.|Mrs\.|Thank you,?\s+)([\w][\w\s]{1,30}?)(?:\.|,|!|\n)/i);
+    if (nameMatch) {
+      demographics = { ...(demographics ?? {}), name: nameMatch[1].trim() };
+    }
+  }
+  if (painLevel === null) {
+    const painMatch = transcript.match(/\b([0-9]|10)\s*(?:out of|\/)\s*10\b/i);
+    if (painMatch) painLevel = parseInt(painMatch[1], 10);
+  }
+
   const resolvedComplaint = chiefComplaint?.trim() || "Unknown — brief intake";
 
   // --- Score patient (AI with rule-based fallback) ---
