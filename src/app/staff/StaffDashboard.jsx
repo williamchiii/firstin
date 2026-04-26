@@ -211,6 +211,8 @@ function PatientDetails({ p, onStatus }) {
   return (
     <div className="flex flex-col gap-3 text-sm">
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-muted-foreground">
+        <div>Arrival</div>
+        <div className="text-foreground">{formatArrivalTime(p.arrival_time)}</div>
         <div>Pain</div>
         <div className="text-foreground">{p.pain_level ?? "—"}/10</div>
         <div>Symptoms</div>
@@ -251,4 +253,20 @@ function labelFor(status) {
 
 function waitCategoryFromEsi(esi) {
   return { 1: "immediate", 2: "priority", 3: "urgent", 4: "standard", 5: "non_urgent" }[esi] || "";
+}
+
+function formatArrivalTime(value) {
+  if (!value) return "—";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return date.toLocaleString(undefined, {
+    timeZone: "America/New_York",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
 }
