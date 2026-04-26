@@ -1,21 +1,38 @@
-// Browser-side Supabase client — uses anon key, subject to RLS.
-// Safe to import from client components and pages.
-// Do NOT use for server-side operations — use src/lib/supabase.js (service role) instead.
+// Browser-side Supabase client (anon key). Used for auth on the staff pages.
+//
+// MUST use @supabase/ssr's createBrowserClient — it stores the session in
+// cookies, which the proxy at src/proxy.js reads to gate /staff/*.
+// createClient from @supabase/supabase-js uses localStorage; the proxy can't
+// see localStorage, so signing in succeeds in the browser but the next request
+// to /staff bounces back to /staff/login. Don't change this without also
+// changing the proxy.
 
-import { createClient } from "@supabase/supabase-js";
+"use client";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+import { createBrowserClient } from "@supabase/ssr";
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local",
-  );
-}
+let client;
 
-export const supabaseBrowser = createClient(supabaseUrl, supabaseAnonKey);
-
-// Lazy accessor used by staff components.
 export function getSupabaseBrowser() {
-  return supabaseBrowser;
+  if (client) return client;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local",
+    );
+  }
+  client = createBrowserClient(url, anonKey);
+  return client;
 }
+
+// Backwards-compat: some teammates import the named instance directly.
+// Proxy lazily delegates so module load doesn't throw before env is read.
+export const supabaseBrowser = new Proxy(
+  {},
+  {
+    get(_target, prop) {
+      return Reflect.get(getSupabaseBrowser(), prop);
+    },
+  },
+);
