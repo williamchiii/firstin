@@ -16,7 +16,7 @@
 //   - ESI score / clinical data: NOT handled here — this route is stateless
 //   - Use gemini-1.5-flash (not pro): speed matters more than depth for UX
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { jsonError, jsonOk, methodNotAllowed, readJsonBody } from "@/lib/http.js";
 
 // ── FALLBACK QUESTIONS ────────────────────────────────────────────────────────
@@ -182,21 +182,8 @@ export async function POST(req) {
 
   // ── Gemini call ───────────────────────────────────────────────────────────
   try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    // gemini-1.5-flash: optimised for latency — target <2s for kiosk UX
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      systemInstruction: SYSTEM_PROMPT,
-      generationConfig: {
-        // Structured JSON output — no markdown fences, no prose wrapping
-        responseMimeType: "application/json",
-        temperature: 0.3,      // some variation so questions don't feel templated
-        maxOutputTokens: 1024,
-      },
-    });
+    const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    // Note for non-English: instruct Gemini to write labels/options in target language.
-    // The system prompt already mentions locale; this reinforces it in the user turn.
     const languageNote =
       language !== "en"
         ? `\nIMPORTANT: All question labels and option text must be written in the language with locale code "${language}".`
@@ -207,8 +194,17 @@ export async function POST(req) {
       `Patient language: ${language}${languageNote}\n` +
       `Generate 3-4 targeted clinical follow-up questions.`;
 
-    const result = await model.generateContent(userMessage);
-    const responseText = result.response.text();
+    const result = await genAI.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: userMessage,
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+        responseMimeType: "application/json",
+        temperature: 0.3,
+        maxOutputTokens: 1024,
+      },
+    });
+    const responseText = result.text;
 
     const questions = parseAndValidateQuestions(responseText);
 
