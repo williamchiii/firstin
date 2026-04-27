@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export default function EmailCaptureModal({ caseId, patientId, queuePosition, onDone }) {
+export default function EmailCaptureModal({ patientId, onDone }) {
   const [uiState, setUiState] = useState("prompt"); // prompt | submitting | sent | skipped | error
   const [email, setEmail] = useState("");
   const [errorMsg, setErrorMsg] = useState(null);
@@ -42,11 +42,7 @@ export default function EmailCaptureModal({ caseId, patientId, queuePosition, on
   }
 
   if (uiState === "skipped") {
-    return (
-      <p className="text-xs text-gray-400 text-center">
-        No email sent. Remember your queue position <strong className="text-gray-600">#{queuePosition}</strong>.
-      </p>
-    );
+    return null;
   }
 
   return (

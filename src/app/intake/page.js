@@ -46,6 +46,9 @@ function ModeSelector({ onSelect }) {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
+      <Link href="/" className="absolute top-5 left-5 z-10 text-white/50 hover:text-white transition-colors">
+        <X className="w-5 h-5" />
+      </Link>
       {/* Voice side */}
       <div
         className="relative flex flex-col items-center justify-center cursor-pointer select-none transition-all duration-500 ease-in-out bg-black"
@@ -469,6 +472,7 @@ function VoiceIntake({ onBack }) {
   const [errorMsg, setErrorMsg] = useState(null);
   const [finalizeResult, setFinalizeResult] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showHomeButton, setShowHomeButton] = useState(false);
   const messagesEndRef = useRef(null);
   const hasConnectedRef = useRef(false);
   const msgCounterRef = useRef(0);
@@ -606,51 +610,25 @@ function VoiceIntake({ onBack }) {
         {showModal && <CredentialsModal onClose={() => setShowModal(false)} />}
         <div className="min-h-screen bg-white bg-[radial-gradient(circle_at_1.5px_1.5px,rgba(23,23,23,0.2)_1.5px,transparent_0)] bg-[length:39px_39px] flex items-center justify-center px-6">
           <div className="max-w-sm w-full flex flex-col items-center gap-6 text-center">
-            <span className="text-5xl">✅</span>
+            <svg className="w-12 h-12 text-gray-900" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
             <h2 className="text-2xl font-semibold text-gray-900">You&apos;re all set</h2>
             <EmailCaptureModal
               caseId={finalizeResult.caseId}
               patientId={finalizeResult.patientId}
               queuePosition={finalizeResult.queuePosition}
-              onDone={() => setShowModal(true)}
+              onDone={() => { setShowModal(true); setShowHomeButton(true); }}
             />
-            <div className="w-full flex flex-col gap-2">
-              <Link
-                href={`/patient/status?patientId=${finalizeResult.patientId}&caseId=${finalizeResult.caseId}`}
-                className="text-sm text-gray-700 underline underline-offset-2 hover:text-gray-900"
-              >
-                Check live queue status
-              </Link>
-              <Link
-                href="/patient/login"
-                className="text-sm text-gray-500 underline underline-offset-2 hover:text-gray-700"
-              >
-                Patient sign-in
-              </Link>
-              <Link
-                href="/staff/login"
-                className="text-sm text-gray-500 underline underline-offset-2 hover:text-gray-700"
-              >
-                Staff sign-in
-              </Link>
+            {showHomeButton && (
               <Link
                 href="/"
-                className="text-xs text-gray-400 underline underline-offset-2 hover:text-gray-600 mt-1"
+                onClick={() => { try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ } }}
+                className="inline-flex h-10 items-center rounded-md border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-800 shadow-sm transition hover:border-neutral-500 hover:bg-neutral-50"
               >
                 Back to home
               </Link>
-            </div>
-            <button
-              onClick={() => {
-                try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
-                setPhase("idle");
-                setFinalizeResult(null);
-                setShowModal(false);
-              }}
-              className="text-xs text-gray-300 hover:text-gray-500 transition-colors"
-            >
-              Start new intake
-            </button>
+            )}
           </div>
         </div>
       </>
@@ -712,9 +690,9 @@ function VoiceIntake({ onBack }) {
           </p>
         )}
         {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div key={msg.id} className={`flex ${msg.source === "user" ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-              msg.role === "user"
+              msg.source === "user"
                 ? "bg-gray-900 text-white rounded-br-sm"
                 : "bg-gray-100 text-gray-800 rounded-bl-sm"
             }`}>

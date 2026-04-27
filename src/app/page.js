@@ -2,6 +2,7 @@ import Link from "next/link";
 import TypewriterHeadline from "@/components/TypewriterHeadline";
 import TypewriterText from "@/components/TypewriterText";
 import CheckInButton from "@/components/CheckInButton";
+import ScrollDownButton from "@/components/ScrollDownButton";
 
 // --- Static data ---
 const HOW_IT_WORKS = [
@@ -100,10 +101,12 @@ export default function Home() {
         >
           <CheckInButton />
         </section>
+
+        <ScrollDownButton targetId="how-it-works" />
       </main>
 
       {/* --- How it works --- */}
-      <section className="border-t border-neutral-200 bg-white px-5 py-20 sm:px-8 sm:py-28 lg:px-13">
+      <section id="how-it-works" className="border-t border-neutral-200 bg-white px-5 py-20 sm:px-8 sm:py-28 lg:px-13">
         <div className="mx-auto max-w-4xl">
           <p className="mb-8 text-lg text-neutral-500 sm:text-xl">
             <TypewriterText text="How it works" />
