@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -24,7 +24,7 @@ const WAIT_LABEL = {
 
 const ESI_TO_WAIT = { 1: "immediate", 2: "priority", 3: "urgent", 4: "standard", 5: "non_urgent" };
 
-export default function PatientStatusPage() {
+function PatientStatusContent() {
   const searchParams = useSearchParams();
   const caseId = searchParams.get("caseId");
 
@@ -149,5 +149,13 @@ export default function PatientStatusPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function PatientStatusPage() {
+  return (
+    <Suspense>
+      <PatientStatusContent />
+    </Suspense>
   );
 }
