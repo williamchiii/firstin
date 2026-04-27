@@ -73,7 +73,7 @@ Run `supabase/schema.sql` in the Supabase SQL editor before using the app. The s
 - `staff`
 - `case_notes`
 
-It also enables row-level security and adds policies for patient and staff access.
+It also enables row-level security (RLS) and adds policies for patient and staff access.
 
 ## Environment Variables
 
